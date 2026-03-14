@@ -159,7 +159,6 @@
         .template-title { font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem; }
         .template-preview { font-size: 0.85rem; color: var(--text-secondary); }
         
-        .whatsapp-frame { width: 100%; height: calc(100vh - 200px); border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); }
         
         @media (max-width: 768px) {
             .sidebar { width: var(--sidebar-width); transform: translateX(-100%); }
@@ -205,12 +204,6 @@
             </button>
             <button class="nav-tab" onclick="switchTab('analytics')">
                 <span class="nav-tab-icon">📈</span><span class="nav-tab-text">Analytics</span>
-            </button>
-            <button class="nav-tab" onclick="switchTab('whatsapp')">
-                <span class="nav-tab-icon">💬</span><span class="nav-tab-text">WhatsApp</span>
-            </button>
-            <button class="nav-tab" onclick="switchTab('planner')">
-                <span class="nav-tab-icon">📅</span><span class="nav-tab-text">Planner</span>
             </button>
             <button class="nav-tab" onclick="switchTab('settings')">
                 <span class="nav-tab-icon">⚙️</span><span class="nav-tab-text">Settings</span>
@@ -328,37 +321,6 @@
             <div class="card">
                 <div class="card-header"><h2 class="card-title">Campaign Performance</h2></div>
                 <div class="table-container"><table><thead><tr><th>Campaign</th><th>Views</th><th>Spend</th><th>CPM</th><th>Creators</th></tr></thead><tbody id="analyticsTableBody"></tbody></table></div>
-            </div>
-        </div>
-
-        <!-- WhatsApp Tab -->
-        <div id="whatsapp" class="tab-content">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">💬 WhatsApp Web</h2>
-                </div>
-                <div class="alert alert-info">
-                    <span>ℹ️</span>
-                    <div>
-                        <strong>WhatsApp Web Integration</strong><br>
-                        Scan the QR code to login to WhatsApp Web. Your session will stay active in this tab.
-                    </div>
-                </div>
-                <iframe src="https://web.whatsapp.com" class="whatsapp-frame"></iframe>
-            </div>
-        </div>
-
-        <!-- Planner Tab -->
-        <div id="planner" class="tab-content">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">📅 Content Calendar - <span id="currentMonthYear"></span></h2>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-primary btn-small" onclick="previousMonth()">← Prev</button>
-                        <button class="btn btn-primary btn-small" onclick="nextMonth()">Next →</button>
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1rem; margin-top: 2rem;" id="calendarGrid"></div>
             </div>
         </div>
 
@@ -504,7 +466,6 @@
         let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || '';
         let CURRENT_MONTH_FILTER = 'all';
         let CURRENT_REPORT_MONTH = 'all';
-        let currentCalendarDate = new Date();
         let charts = {};
         let uploadedFileData = null;
         let currentWhatsAppContact = { phone: '', name: '', product: '' };
@@ -528,8 +489,6 @@
                 document.getElementById('sidebar').classList.add('collapsed');
                 document.getElementById('mainContainer').classList.add('sidebar-collapsed');
             }
-            
-            updateCalendar();
         });
 
         // Sidebar functions
@@ -1215,16 +1174,6 @@
                 options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'CPM by Campaign', color: '#e2e8f0' }, legend: { labels: { color: '#e2e8f0' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } } } }
             });
         }
-
-        function updateCalendar() {
-            const mn = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-            document.getElementById('currentMonthYear').textContent = `${mn[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
-            const cg = document.getElementById('calendarGrid'); 
-            cg.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div style="font-weight: 700; color: var(--text-primary); padding: 0.5rem; text-align: center;">${d}</div>`).join('');
-        }
-
-        function previousMonth() { currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1); updateCalendar(); }
-        function nextMonth() { currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1); updateCalendar(); }
 
         function filterCreators() {
             const s = document.getElementById('creatorSearch').value.toLowerCase();
