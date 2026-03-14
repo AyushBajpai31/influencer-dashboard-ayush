@@ -3,943 +3,509 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Influencer Campaign Dashboard</title>
+    <title>Ayush Database - Influencer Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --secondary: #ec4899;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --bg-main: #0f0f23;
-            --bg-card: #1a1a2e;
-            --bg-elevated: #25253f;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --border: #2d2d44;
-            --accent-cyan: #06b6d4;
-            --accent-violet: #8b5cf6;
+            --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #ec4899;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --bg-main: #0f0f23; --bg-card: #1a1a2e; --bg-elevated: #25253f;
+            --text-primary: #e2e8f0; --text-secondary: #94a3b8; --border: #2d2d44;
+            --sidebar-width: 280px; --sidebar-collapsed: 60px;
         }
-
         body {
-            font-family: 'Outfit', sans-serif;
-            background: var(--bg-main);
-            color: var(--text-primary);
-            line-height: 1.6;
-            overflow-x: hidden;
+            font-family: 'Outfit', sans-serif; background: var(--bg-main);
+            color: var(--text-primary); line-height: 1.6; overflow-x: hidden;
         }
-
-        /* Animated Background */
         .bg-gradient {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            opacity: 0.4;
-            background: 
-                radial-gradient(ellipse at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 70%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
-            animation: gradientShift 15s ease infinite;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.4;
+            background: radial-gradient(ellipse at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                       radial-gradient(ellipse at 80% 70%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
         }
-
-        @keyframes gradientShift {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(20px, -20px) scale(1.1); }
+        
+        .sidebar {
+            position: fixed; left: 0; top: 0; height: 100%; width: var(--sidebar-width);
+            background: var(--bg-card); border-right: 1px solid var(--border); z-index: 1000;
+            transition: width 0.3s ease; overflow: hidden;
         }
-
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 2rem;
+        .sidebar.collapsed { width: var(--sidebar-collapsed); }
+        .sidebar-header {
+            padding: 1.5rem; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border);
         }
-
-        /* Header */
-        header {
-            margin-bottom: 3rem;
-            animation: slideDown 0.6s ease;
+        .sidebar-toggle {
+            background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+            padding: 0.5rem; cursor: pointer; transition: all 0.3s ease; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
         }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-30px); }
-            to { opacity: 1; transform: translateY(0); }
+        .sidebar-toggle:hover { background: var(--primary); border-color: var(--primary); }
+        .sidebar-logo {
+            font-size: 1.2rem; font-weight: 700; color: var(--text-primary);
+            white-space: nowrap; transition: opacity 0.3s ease;
         }
-
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -0.02em;
-        }
-
-        .sync-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .sync-status {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--success);
-            animation: pulse 2s ease infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-family: 'Outfit', sans-serif;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            animation: fadeInUp 0.6s ease backwards;
-        }
-
-        .stat-card:nth-child(1) { animation-delay: 0.1s; }
-        .stat-card:nth-child(2) { animation-delay: 0.2s; }
-        .stat-card:nth-child(3) { animation-delay: 0.3s; }
-        .stat-card:nth-child(4) { animation-delay: 0.4s; }
-        .stat-card:nth-child(5) { animation-delay: 0.5s; }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--primary);
-            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.2);
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 100px;
-            height: 100px;
-            background: var(--primary);
-            opacity: 0.05;
-            border-radius: 50%;
-            transform: translate(30%, -30%);
-        }
-
-        .stat-label {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 800;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-trend {
-            font-size: 0.85rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-        }
-
-        .trend-up { color: var(--success); }
-        .trend-down { color: var(--danger); }
-
-        /* Navigation Tabs */
-        .nav-tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 0;
-            flex-wrap: wrap;
-        }
-
+        .sidebar.collapsed .sidebar-logo { opacity: 0; display: none; }
+        .hamburger { width: 24px; height: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        .hamburger span { display: block; height: 3px; width: 100%; background: var(--text-primary); border-radius: 3px; }
+        
+        .nav-tabs { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem 0; }
         .nav-tab {
-            padding: 1rem 1.5rem;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: var(--text-secondary);
-            font-family: 'Outfit', sans-serif;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
+            padding: 1rem 1.5rem; background: transparent; border: none; border-left: 3px solid transparent;
+            color: var(--text-secondary); font-weight: 600; cursor: pointer; text-align: left; width: 100%;
+            transition: all 0.3s ease; display: flex; align-items: center; gap: 1rem; white-space: nowrap;
         }
-
-        .nav-tab:hover {
-            color: var(--text-primary);
+        .nav-tab-icon { font-size: 1.2rem; min-width: 24px; text-align: center; }
+        .nav-tab-text { transition: opacity 0.3s ease; }
+        .sidebar.collapsed .nav-tab-text { opacity: 0; display: none; }
+        .nav-tab:hover { color: var(--text-primary); background: var(--bg-elevated); }
+        .nav-tab.active { color: var(--primary); border-left-color: var(--primary); background: var(--bg-elevated); }
+        
+        .container {
+            position: relative; z-index: 1; max-width: 1600px; margin: 0 auto; padding: 2rem;
+            margin-left: var(--sidebar-width); transition: margin-left 0.3s ease;
         }
-
-        .nav-tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
+        .container.sidebar-collapsed { margin-left: var(--sidebar-collapsed); }
+        
+        header { margin-bottom: 3rem; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        h1 {
+            font-size: 2.5rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.02em;
         }
-
-        /* Tab Content */
-        .tab-content {
-            display: none;
+        .sync-info { display: flex; align-items: center; gap: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-secondary); flex-wrap: wrap; }
+        .sync-status, .month-filter { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s ease infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        select, input[type="text"], input[type="file"], textarea {
+            background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary);
+            padding: 0.75rem 1rem; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 0.95rem;
         }
-
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.4s ease;
+        input[type="file"] { cursor: pointer; }
+        .btn { 
+            padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; 
+            cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s;
+            font-family: 'Outfit', sans-serif; font-size: 0.95rem;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        /* Card */
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        /* Table */
-        .table-container {
-            overflow-x: auto;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        thead {
-            background: var(--bg-elevated);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        th {
-            padding: 1rem;
-            text-align: left;
-            font-weight: 700;
-            color: var(--text-primary);
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
-            border-bottom: 2px solid var(--border);
-        }
-
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            color: var(--text-secondary);
-        }
-
-        tbody tr {
-            transition: background 0.2s ease;
-        }
-
-        tbody tr:hover {
-            background: var(--bg-elevated);
-        }
-
-        /* Search & Filters */
-        .controls {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-        }
-
-        .search-box {
-            flex: 1;
-            min-width: 250px;
-            position: relative;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 0.75rem 1rem 0.75rem 2.5rem;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-family: 'Outfit', sans-serif;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-        }
-
-        .search-box input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-secondary);
-        }
-
-        select {
-            padding: 0.75rem 1rem;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-family: 'Outfit', sans-serif;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        /* Status Badge */
-        .badge {
-            display: inline-block;
-            padding: 0.35rem 0.75rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-
+        .btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); }
+        .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--bg-elevated); border-color: var(--primary); }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; transition: all 0.3s; }
+        .stat-card:hover { transform: translateY(-4px); border-color: var(--primary); box-shadow: 0 12px 30px rgba(99, 102, 241, 0.2); }
+        .stat-label { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem; }
+        .stat-value { font-size: 2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem; }
+        
+        .tab-content { display: none; } 
+        .tab-content.active { display: block; }
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+        .card-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
+        .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        thead { background: var(--bg-elevated); position: sticky; top: 0; z-index: 10; }
+        th { padding: 1rem; text-align: left; font-weight: 700; color: var(--text-primary); text-transform: uppercase; font-size: 0.75rem; border-bottom: 2px solid var(--border); }
+        td { padding: 1rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+        tbody tr { transition: background 0.2s; } 
+        tbody tr:hover { background: var(--bg-elevated); }
+        
+        .controls { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .search-box { flex: 1; min-width: 250px; position: relative; }
+        .search-box input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+        
+        .badge { display: inline-block; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
         .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
         .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-        .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
         .badge-primary { background: rgba(99, 102, 241, 0.15); color: var(--primary); }
         .badge-secondary { background: rgba(148, 163, 184, 0.15); color: var(--text-secondary); }
-
-        /* Charts */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+        
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .chart-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; height: 350px; }
+        
+        .link-icon {
+            display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+            background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); border-radius: 6px;
+            color: var(--primary); text-decoration: none; transition: all 0.3s; font-size: 1.1rem;
         }
-
-        .chart-container {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            height: 350px;
+        .link-icon:hover { background: var(--primary); color: white; transform: translateY(-2px); }
+        
+        .tier-1 { color: #f59e0b; font-weight: 700; } 
+        .tier-2 { color: #ec4899; font-weight: 700; }
+        .tier-3 { color: #8b5cf6; font-weight: 700; } 
+        .tier-4 { color: #06b6d4; font-weight: 700; } 
+        .tier-5 { color: #10b981; font-weight: 700; }
+        
+        .locked-creator-item { background: var(--bg-elevated); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 3px solid var(--success); }
+        .locked-creator-item strong { color: var(--text-primary); display: block; margin-bottom: 0.5rem; }
+        .locked-creator-products { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+        .product-tag { background: rgba(99, 102, 241, 0.2); color: var(--primary); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 2000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; max-width: 900px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .close-modal { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.5rem; }
+        
+        .upload-area {
+            border: 2px dashed var(--border); border-radius: 12px; padding: 3rem 2rem;
+            text-align: center; transition: all 0.3s ease; cursor: pointer;
         }
-
-        /* Timeline */
-        .timeline {
-            position: relative;
-            padding-left: 2rem;
+        .upload-area:hover { border-color: var(--primary); background: rgba(99, 102, 241, 0.05); }
+        .upload-area.dragover { border-color: var(--primary); background: rgba(99, 102, 241, 0.1); }
+        
+        .month-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .month-tab {
+            padding: 0.5rem 1rem; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text-secondary); cursor: pointer; transition: all 0.3s ease;
+            font-size: 0.9rem; font-weight: 600;
         }
-
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: var(--border);
+        .month-tab:hover { border-color: var(--primary); color: var(--text-primary); }
+        .month-tab.active { background: var(--primary); border-color: var(--primary); color: white; }
+        
+        .data-source-item {
+            display: flex; justify-content: space-between; align-items: center; padding: 1rem;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem;
         }
-
-        .timeline-item {
-            position: relative;
-            margin-bottom: 2rem;
-            padding-left: 1.5rem;
+        .data-source-item.active { border-color: var(--success); }
+        
+        .alert {
+            padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 1rem;
         }
-
-        .timeline-item::before {
-            content: '';
-            position: absolute;
-            left: -2.5rem;
-            top: 0.5rem;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--primary);
-            border: 3px solid var(--bg-main);
-        }
-
-        .timeline-date {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .timeline-content {
-            background: var(--bg-elevated);
-            padding: 1rem;
-            border-radius: 8px;
-            border-left: 3px solid var(--primary);
-        }
-
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 2rem;
-            max-width: 800px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: modalSlideIn 0.3s ease;
-        }
-
-        @keyframes modalSlideIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.5rem;
-            transition: color 0.3s ease;
-        }
-
-        .close-modal:hover {
-            color: var(--danger);
-        }
-
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-secondary);
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid var(--border);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive */
+        .alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); color: var(--warning); }
+        .alert-info { background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); color: var(--primary); }
+        
         @media (max-width: 768px) {
-            h1 { font-size: 2rem; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .charts-grid { grid-template-columns: 1fr; }
-            .controls { flex-direction: column; }
-            .search-box { min-width: 100%; }
+            .sidebar { width: var(--sidebar-width); transform: translateX(-100%); }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .container { margin-left: 0 !important; padding: 1rem; padding-top: 5rem; }
+            h1 { font-size: 1.8rem; }
+            .stats-grid, .charts-grid { grid-template-columns: 1fr; }
+            .sidebar-toggle-mobile { display: block; position: fixed; top: 1rem; left: 1rem; z-index: 1001; }
         }
-
-        /* Tier Colors */
-        .tier-mega { color: #f59e0b; font-weight: 700; }
-        .tier-macro { color: #ec4899; font-weight: 700; }
-        .tier-mid { color: #8b5cf6; font-weight: 700; }
-        .tier-micro { color: #06b6d4; font-weight: 700; }
-        .tier-nano { color: #10b981; font-weight: 700; }
-
-        /* Platform Icons */
-        .platform-icon {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-secondary);
-        }
-
-        .empty-state svg {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 1rem;
-            opacity: 0.3;
-        }
+        @media (min-width: 769px) { .sidebar-toggle-mobile { display: none !important; } }
     </style>
 </head>
 <body>
     <div class="bg-gradient"></div>
     
-    <div class="container">
+    <button class="sidebar-toggle sidebar-toggle-mobile" onclick="toggleMobileSidebar()">
+        <div class="hamburger"><span></span><span></span><span></span></div>
+    </button>
+    
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-logo">📊 Menu</span>
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <div class="hamburger"><span></span><span></span><span></span></div>
+            </button>
+        </div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('overview')">
+                <span class="nav-tab-icon">📊</span><span class="nav-tab-text">Overview</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('creators')">
+                <span class="nav-tab-icon">👥</span><span class="nav-tab-text">Creators</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('campaigns')">
+                <span class="nav-tab-icon">🎯</span><span class="nav-tab-text">Campaigns</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('payments')">
+                <span class="nav-tab-icon">💳</span><span class="nav-tab-text">Payments</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('analytics')">
+                <span class="nav-tab-icon">📈</span><span class="nav-tab-text">Analytics</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('planner')">
+                <span class="nav-tab-icon">📅</span><span class="nav-tab-text">Planner</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('settings')">
+                <span class="nav-tab-icon">⚙️</span><span class="nav-tab-text">Settings</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="container" id="mainContainer">
         <header>
             <div class="header-top">
-                <h1>⚡ Campaign Control</h1>
+                <h1>⚡ Ayush Database</h1>
                 <div class="sync-info">
-                    <div class="sync-status">
-                        <span class="status-dot"></span>
-                        <span id="lastSync">Last sync: Never</span>
+                    <div class="month-filter">
+                        <label style="color: var(--text-primary); font-weight: 600;">📅 Month:</label>
+                        <select id="monthFilter" onchange="applyMonthFilter()">
+                            <option value="all">All Time</option>
+                            <option value="Jan 2026">Jan 2026</option><option value="Feb 2026">Feb 2026</option>
+                            <option value="Mar 2026">Mar 2026</option><option value="Apr 2026">Apr 2026</option>
+                            <option value="May 2026">May 2026</option><option value="Jun 2026">Jun 2026</option>
+                            <option value="Jul 2026">Jul 2026</option><option value="Aug 2026">Aug 2026</option>
+                            <option value="Sep 2026">Sep 2026</option><option value="Oct 2026">Oct 2026</option>
+                            <option value="Nov 2026">Nov 2026</option><option value="Dec 2026">Dec 2026</option>
+                        </select>
                     </div>
-                    <button class="btn btn-primary" onclick="loadData()">
-                        <span>🔄</span> Refresh Data
-                    </button>
+                    <div class="sync-status"><span class="status-dot"></span><span id="lastSync">Last sync: Never</span></div>
+                    <button class="btn btn-primary" onclick="loadAllData()"><span>🔄</span> Refresh Data</button>
                 </div>
             </div>
         </header>
 
-        <!-- Stats Overview -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-label">Total Creators</div>
-                <div class="stat-value" id="totalCreators">0</div>
-                <div class="stat-trend trend-up">
-                    <span>↑</span> Active this month
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Active Campaigns</div>
-                <div class="stat-value" id="activeCampaigns">0</div>
-                <div class="stat-trend trend-up">
-                    <span>🎯</span> In progress
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Total Spend</div>
-                <div class="stat-value" id="totalSpend">₹0</div>
-                <div class="stat-trend">
-                    <span>💰</span> This month
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Pending Payments</div>
-                <div class="stat-value" id="pendingPayments">₹0</div>
-                <div class="stat-trend trend-down">
-                    <span>⏳</span> Due now
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Avg CPM</div>
-                <div class="stat-value" id="avgCPM">₹0</div>
-                <div class="stat-trend">
-                    <span>📊</span> Performance
-                </div>
-            </div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Total Creators</div><div class="stat-value" id="totalCreators">0</div></div>
+            <div class="stat-card"><div class="stat-label">Active Products</div><div class="stat-value" id="activeProducts">0</div></div>
+            <div class="stat-card"><div class="stat-label">Total Spend</div><div class="stat-value" id="totalSpend">₹0</div></div>
+            <div class="stat-card"><div class="stat-label">Pending Payments</div><div class="stat-value" id="pendingPayments">₹0</div></div>
+            <div class="stat-card"><div class="stat-label">Avg CPM</div><div class="stat-value" id="avgCPM">₹0</div></div>
         </div>
 
-        <!-- Navigation Tabs -->
-        <div class="nav-tabs">
-            <button class="nav-tab active" onclick="switchTab('overview')">📊 Overview</button>
-            <button class="nav-tab" onclick="switchTab('creators')">👥 Creators</button>
-            <button class="nav-tab" onclick="switchTab('campaigns')">🎯 Campaigns</button>
-            <button class="nav-tab" onclick="switchTab('payments')">💳 Payments</button>
-            <button class="nav-tab" onclick="switchTab('analytics')">📈 Analytics</button>
-            <button class="nav-tab" onclick="switchTab('planner')">📅 Planner</button>
-        </div>
-
-        <!-- Tab: Overview -->
+        <!-- Overview Tab -->
         <div id="overview" class="tab-content active">
             <div class="charts-grid">
-                <div class="chart-container">
-                    <canvas id="campaignStatusChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="tierDistributionChart"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="productCreatorChart"></canvas></div>
+                <div class="chart-container"><canvas id="creatorStatusChart"></canvas></div>
             </div>
-
             <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Recent Activity</h2>
-                </div>
-                <div class="timeline" id="recentActivity">
-                    <!-- Timeline items will be populated here -->
-                </div>
+                <div class="card-header"><h2 class="card-title">🔒 Recently Locked Creators</h2></div>
+                <div id="lockedCreatorsActivity"></div>
             </div>
         </div>
 
-        <!-- Tab: Creators Database -->
+        <!-- Creators Tab -->
         <div id="creators" class="tab-content">
             <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Creator Database</h2>
-                </div>
-                
+                <div class="card-header"><h2 class="card-title">Creator Database</h2></div>
                 <div class="controls">
-                    <div class="search-box">
-                        <span class="search-icon">🔍</span>
-                        <input type="text" id="creatorSearch" placeholder="Search creators..." onkeyup="filterCreators()">
-                    </div>
-                    <select id="platformFilter" onchange="filterCreators()">
-                        <option value="">All Platforms</option>
-                        <option value="Instagram">Instagram</option>
-                        <option value="YouTube">YouTube</option>
-                        <option value="Facebook">Facebook</option>
-                    </select>
-                    <select id="tierFilter" onchange="filterCreators()">
-                        <option value="">All Tiers</option>
-                        <option value="Mega">Mega (1M+)</option>
-                        <option value="Macro">Macro (100K-1M)</option>
-                        <option value="Mid">Mid (10K-100K)</option>
-                        <option value="Micro">Micro (1K-10K)</option>
-                        <option value="Nano">Nano (<1K)</option>
-                    </select>
-                    <select id="categoryFilter" onchange="filterCreators()">
-                        <option value="">All Categories</option>
-                    </select>
+                    <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="creatorSearch" placeholder="Search..." onkeyup="filterCreators()"></div>
+                    <select id="platformFilter" onchange="filterCreators()"><option value="">All Platforms</option><option value="Instagram">Instagram</option><option value="YouTube">YouTube</option><option value="Facebook">Facebook</option></select>
+                    <select id="tierFilter" onchange="filterCreators()"><option value="">All Tiers</option><option value="Tier 1">Tier 1</option><option value="Tier 2">Tier 2</option><option value="Tier 3">Tier 3</option><option value="Tier 4">Tier 4</option><option value="Tier 5">Tier 5</option></select>
+                    <select id="categoryFilter" onchange="filterCreators()"><option value="">All Categories</option></select>
+                    <select id="genderFilter" onchange="filterCreators()"><option value="">All Genders</option><option value="Male">Male</option><option value="Female">Female</option><option value="Couple">Couple</option></select>
+                    <select id="statusFilterCreators" onchange="filterCreators()"><option value="">All Status</option><option value="Shortlisted">Shortlisted</option><option value="Reached Out">Reached Out</option><option value="Negotiation">Negotiation</option><option value="Locked">Locked</option><option value="Active">Active</option></select>
                 </div>
-
-                <div class="table-container">
-                    <table id="creatorsTable">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Platform</th>
-                                <th>Followers</th>
-                                <th>Tier</th>
-                                <th>Category</th>
-                                <th>Avg Reach</th>
-                                <th>Pricing</th>
-                                <th>Status</th>
-                                <th>Contact</th>
-                            </tr>
-                        </thead>
-                        <tbody id="creatorsTableBody">
-                            <!-- Creator rows will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
+                <div class="table-container"><table><thead><tr><th>Name</th><th>Platform</th><th>Link</th><th>Followers</th><th>Tier</th><th>Gender</th><th>Category</th><th>Avg Reach</th><th>Pricing</th><th>Product(s)</th><th>Status</th><th>Contact</th></tr></thead><tbody id="creatorsTableBody"></tbody></table></div>
             </div>
         </div>
 
-        <!-- Tab: Campaigns -->
+        <!-- Campaigns Tab -->
         <div id="campaigns" class="tab-content">
             <div class="card">
+                <div class="card-header"><h2 class="card-title">Campaign Management</h2></div>
+                <div class="table-container"><table><thead><tr><th>Brand</th><th>Product</th><th>Creators</th><th>Budget</th><th>Spent</th><th>Posts</th><th>Status</th></tr></thead><tbody id="campaignsTableBody"></tbody></table></div>
+            </div>
+            
+            <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Campaign Management</h2>
+                    <h2 class="card-title">📊 Campaign Reports</h2>
+                    <button class="btn btn-primary" onclick="openUploadModal()">
+                        <span>📤</span> Upload Report
+                    </button>
                 </div>
                 
-                <div class="table-container">
-                    <table id="campaignsTable">
-                        <thead>
-                            <tr>
-                                <th>Brand</th>
-                                <th>Product</th>
-                                <th>Creators</th>
-                                <th>Budget</th>
-                                <th>Spent</th>
-                                <th>Posts</th>
-                                <th>Status</th>
-                                <th>Performance</th>
-                            </tr>
-                        </thead>
-                        <tbody id="campaignsTableBody">
-                            <!-- Campaign rows will be populated here -->
-                        </tbody>
-                    </table>
+                <div id="setupAlert" class="alert alert-warning" style="display:none;">
+                    <span>⚠️</span>
+                    <div>
+                        <strong>Setup Required:</strong> Configure Apps Script URL in Settings to save reports to Google Sheets.
+                        <a href="#" onclick="switchTab('settings'); return false;" style="color: var(--primary); text-decoration: underline;">Go to Settings</a>
+                    </div>
                 </div>
+                
+                <div class="month-tabs" id="reportMonthTabs"></div>
+                <div id="campaignReportsContainer"></div>
             </div>
         </div>
 
-        <!-- Tab: Payments -->
+        <!-- Payments Tab -->
         <div id="payments" class="tab-content">
             <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Payment Tracking</h2>
-                </div>
-
-                <div class="controls">
-                    <select id="paymentStatusFilter" onchange="filterPayments()">
-                        <option value="">All Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Paid">Paid</option>
-                        <option value="Overdue">Overdue</option>
-                    </select>
-                </div>
-                
-                <div class="table-container">
-                    <table id="paymentsTable">
-                        <thead>
-                            <tr>
-                                <th>Creator</th>
-                                <th>Campaign</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Due Date</th>
-                                <th>Payment Date</th>
-                                <th>Method</th>
-                            </tr>
-                        </thead>
-                        <tbody id="paymentsTableBody">
-                            <!-- Payment rows will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
+                <div class="card-header"><h2 class="card-title">Payment Tracking</h2></div>
+                <div class="controls"><select id="paymentStatusFilter" onchange="filterPayments()"><option value="">All Status</option><option value="Pending">Pending</option><option value="Paid">Paid</option><option value="Overdue">Overdue</option></select></div>
+                <div class="table-container"><table><thead><tr><th>Creator</th><th>Campaign</th><th>Amount</th><th>Status</th><th>Due Date</th><th>Payment Date</th><th>Method</th></tr></thead><tbody id="paymentsTableBody"></tbody></table></div>
             </div>
         </div>
 
-        <!-- Tab: Analytics -->
+        <!-- Analytics Tab -->
         <div id="analytics" class="tab-content">
             <div class="charts-grid">
-                <div class="chart-container">
-                    <canvas id="performanceChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="cpmChart"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="performanceChart"></canvas></div>
+                <div class="chart-container"><canvas id="cpmChart"></canvas></div>
             </div>
-
             <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Campaign Performance</h2>
-                </div>
-                <div class="table-container">
-                    <table id="analyticsTable">
-                        <thead>
-                            <tr>
-                                <th>Campaign</th>
-                                <th>Views</th>
-                                <th>Impressions</th>
-                                <th>Spend</th>
-                                <th>CPM</th>
-                                <th>Creators</th>
-                                <th>Avg Reach</th>
-                            </tr>
-                        </thead>
-                        <tbody id="analyticsTableBody">
-                            <!-- Analytics rows will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
+                <div class="card-header"><h2 class="card-title">Campaign Performance</h2></div>
+                <div class="table-container"><table><thead><tr><th>Campaign</th><th>Views</th><th>Spend</th><th>CPM</th><th>Creators</th></tr></thead><tbody id="analyticsTableBody"></tbody></table></div>
             </div>
         </div>
 
-        <!-- Tab: Weekly Planner -->
+        <!-- Planner Tab -->
         <div id="planner" class="tab-content">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Content Calendar</h2>
+                    <h2 class="card-title">📅 Content Calendar - <span id="currentMonthYear"></span></h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary" onclick="previousMonth()" style="padding: 0.5rem 1rem;">← Prev</button>
+                        <button class="btn btn-primary" onclick="nextMonth()" style="padding: 0.5rem 1rem;">Next →</button>
+                    </div>
                 </div>
-                <div id="calendarView">
-                    <!-- Calendar will be populated here -->
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1rem; margin-top: 2rem;" id="calendarGrid"></div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">⚙️ Data Source Management</h2></div>
+                <div style="background: var(--bg-elevated); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Connected Google Sheets</h3>
+                    <div id="dataSourcesList"></div>
+                    <button class="btn btn-primary" onclick="addDataSource()"><span>➕</span> Add New Sheet</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">📤 Campaign Reports Configuration</h2></div>
+                <div class="alert alert-info">
+                    <span>ℹ️</span>
+                    <div>
+                        <strong>Google Apps Script Setup Required</strong><br>
+                        To save campaign reports to Google Sheets, set up a Google Apps Script web app.
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">
+                        Apps Script Web App URL
+                    </label>
+                    <input type="text" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" 
+                           style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
+                    <button class="btn btn-primary" onclick="saveAppsScriptUrl()" style="margin-top: 1rem;">
+                        <span>💾</span> Save URL
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Configuration Modal -->
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="card-title">📤 Upload Campaign Report</h2>
+                <button class="close-modal" onclick="closeUploadModal()">×</button>
+            </div>
+            
+            <div class="upload-area" id="uploadArea" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" onclick="document.getElementById('fileInput').click()">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+                <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">Drop your file here or click to browse</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Supports CSV and Excel (.xlsx) files</p>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem;">
+                    Required columns: Name, Profile Link, Post Link, Pricing, Posting Month, Contact No, Product
+                </p>
+            </div>
+            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+            
+            <div id="uploadPreview" style="display: none; margin-top: 1.5rem;">
+                <h3 style="color: var(--text-primary); margin-bottom: 1rem;">Preview</h3>
+                <div class="table-container" style="max-height: 400px;">
+                    <table id="previewTable">
+                        <thead id="previewTableHead"></thead>
+                        <tbody id="previewTableBody"></tbody>
+                    </table>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveUploadedReport()">
+                        <span>💾</span> Save to Google Sheets
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config Modal -->
     <div id="configModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="card-title">📊 Connect Google Sheets</h2>
-                <button class="close-modal" onclick="closeConfig()">×</button>
+                <h2 class="card-title">📊 Connect Google Sheet</h2>
+                <button class="close-modal" onclick="closeConfigModal()">×</button>
             </div>
-            
             <div style="margin-bottom: 2rem;">
-                <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                    To connect your Google Sheet, you'll need your Google Sheets API key and Sheet ID.
-                </p>
-                
-                <div style="background: var(--bg-elevated); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <strong style="color: var(--text-primary);">Step 1: Get API Key</strong>
-                    <ol style="margin-top: 0.5rem; color: var(--text-secondary); padding-left: 1.5rem;">
-                        <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--primary);">Google Cloud Console</a></li>
-                        <li>Create a new project or select existing</li>
-                        <li>Enable Google Sheets API</li>
-                        <li>Create API Key credentials</li>
-                    </ol>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Sheet Name (Optional)</label>
+                    <input type="text" id="sheetNameInput" placeholder="e.g., Main Database" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
                 </div>
-
-                <div style="background: var(--bg-elevated); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                    <strong style="color: var(--text-primary);">Step 2: Make Sheet Public</strong>
-                    <ol style="margin-top: 0.5rem; color: var(--text-secondary); padding-left: 1.5rem;">
-                        <li>Open your Google Sheet</li>
-                        <li>Click Share → Anyone with the link can view</li>
-                        <li>Copy the Sheet ID from URL (between /d/ and /edit)</li>
-                    </ol>
-                </div>
-
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">API Key</label>
-                    <input type="text" id="apiKeyInput" placeholder="Your Google Sheets API Key" 
-                           style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;">
+                    <input type="text" id="apiKeyInput" placeholder="Your Google Sheets API Key" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
                 </div>
-
                 <div style="margin-bottom: 1.5rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Sheet ID</label>
-                    <input type="text" id="sheetIdInput" placeholder="Your Google Sheet ID" 
-                           style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;">
+                    <input type="text" id="sheetIdInput" placeholder="Your Google Sheet ID" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
                 </div>
-
-                <button class="btn btn-primary" onclick="saveConfig()" style="width: 100%;">
-                    💾 Save & Load Data
-                </button>
+                <button class="btn btn-primary" onclick="saveConfig()" style="width: 100%;">💾 Save & Load Data</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuration
-        let CONFIG = {
-            API_KEY: localStorage.getItem('sheetsApiKey') || '',
-            SHEET_ID: localStorage.getItem('sheetsId') || ''
-        };
-
-        // Data storage
-        let DATA = {
-            creators: [],
-            campaigns: [],
-            payments: [],
-            analytics: []
-        };
-
-        // Charts
+        // Configuration & Data
+        let DATA_SOURCES = JSON.parse(localStorage.getItem('dataSources')) || [];
+        let DATA = { creators: [], campaigns: [], payments: [], analytics: [], campaignReports: [] };
+        let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || '';
+        let CURRENT_MONTH_FILTER = 'all';
+        let CURRENT_REPORT_MONTH = 'all';
+        let currentCalendarDate = new Date();
         let charts = {};
+        let uploadedFileData = null;
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            if (!CONFIG.API_KEY || !CONFIG.SHEET_ID) {
+        document.addEventListener('DOMContentLoaded', () => {
+            if (DATA_SOURCES.length === 0) {
                 document.getElementById('configModal').classList.add('active');
             } else {
-                loadData();
+                loadAllData();
             }
+            
+            if (APPS_SCRIPT_URL) {
+                document.getElementById('appsScriptUrl').value = APPS_SCRIPT_URL;
+            } else {
+                const alertEl = document.getElementById('setupAlert');
+                if (alertEl) alertEl.style.display = 'flex';
+            }
+            
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                document.getElementById('sidebar').classList.add('collapsed');
+                document.getElementById('mainContainer').classList.add('sidebar-collapsed');
+            }
+            
+            updateCalendar();
         });
 
-        function closeConfig() {
-            if (CONFIG.API_KEY && CONFIG.SHEET_ID) {
-                document.getElementById('configModal').classList.remove('active');
-            }
+        // Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const container = document.getElementById('mainContainer');
+            sidebar.classList.toggle('collapsed');
+            container.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+
+        function toggleMobileSidebar() {
+            document.getElementById('sidebar').classList.toggle('mobile-open');
+        }
+
+        // Data Source Management
+        function addDataSource() {
+            document.getElementById('sheetNameInput').value = '';
+            document.getElementById('apiKeyInput').value = '';
+            document.getElementById('sheetIdInput').value = '';
+            document.getElementById('configModal').classList.add('active');
         }
 
         function saveConfig() {
+            const name = document.getElementById('sheetNameInput').value.trim() || 'Sheet ' + (DATA_SOURCES.length + 1);
             const apiKey = document.getElementById('apiKeyInput').value.trim();
             const sheetId = document.getElementById('sheetIdInput').value.trim();
 
@@ -948,508 +514,544 @@
                 return;
             }
 
-            CONFIG.API_KEY = apiKey;
-            CONFIG.SHEET_ID = sheetId;
+            const source = { 
+                id: Date.now().toString(), 
+                name, 
+                apiKey, 
+                sheetId, 
+                active: true 
+            };
             
-            localStorage.setItem('sheetsApiKey', apiKey);
-            localStorage.setItem('sheetsId', sheetId);
-
-            closeConfig();
-            loadData();
+            DATA_SOURCES.push(source);
+            localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+            
+            closeConfigModal();
+            updateDataSourcesList();
+            loadAllData();
         }
 
-        async function loadData() {
-            showLoading();
+        function closeConfigModal() {
+            if (DATA_SOURCES.length > 0) {
+                document.getElementById('configModal').classList.remove('active');
+            }
+        }
 
+        function removeDataSource(id) {
+            if (confirm('Remove this data source?')) {
+                DATA_SOURCES = DATA_SOURCES.filter(s => s.id !== id);
+                localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+                updateDataSourcesList();
+                loadAllData();
+            }
+        }
+
+        function toggleDataSource(id) {
+            const source = DATA_SOURCES.find(s => s.id === id);
+            if (source) {
+                source.active = !source.active;
+                localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+                updateDataSourcesList();
+                loadAllData();
+            }
+        }
+
+        function updateDataSourcesList() {
+            const list = document.getElementById('dataSourcesList');
+            if (DATA_SOURCES.length === 0) {
+                list.innerHTML = '<div style="color: var(--text-secondary); padding: 1rem; text-align: center;">No data sources connected yet.</div>';
+                return;
+            }
+            
+            list.innerHTML = DATA_SOURCES.map(s => `
+                <div class="data-source-item ${s.active ? 'active' : ''}">
+                    <div>
+                        <strong style="color: var(--text-primary);">${s.name}</strong>
+                        <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">
+                            ${s.active ? '✅ Active' : '⏸️ Paused'}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem;" onclick="toggleDataSource('${s.id}')">
+                            ${s.active ? 'Pause' : 'Activate'}
+                        </button>
+                        <button class="btn btn-secondary" style="padding: 0.5rem 1rem;" onclick="removeDataSource('${s.id}')">
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveAppsScriptUrl() {
+            const url = document.getElementById('appsScriptUrl').value.trim();
+            if (!url) {
+                alert('Please enter the Apps Script URL');
+                return;
+            }
+            APPS_SCRIPT_URL = url;
+            localStorage.setItem('appsScriptUrl', url);
+            const alertEl = document.getElementById('setupAlert');
+            if (alertEl) alertEl.style.display = 'none';
+            alert('✅ Apps Script URL saved!');
+        }
+
+        // Load data from all active sources
+        async function loadAllData() {
             try {
-                // Load Creators
-                const creatorsData = await fetchSheetData('Creators!A:J');
-                DATA.creators = parseCreators(creatorsData);
-
-                // Load Campaigns
-                const campaignsData = await fetchSheetData('Campaigns!A:I');
-                DATA.campaigns = parseCampaigns(campaignsData);
-
-                // Load Payments
-                const paymentsData = await fetchSheetData('Payments!A:G');
-                DATA.payments = parsePayments(paymentsData);
-
-                // Load Analytics
-                const analyticsData = await fetchSheetData('Analytics!A:H');
-                DATA.analytics = parseAnalytics(analyticsData);
-
+                DATA = { creators: [], campaigns: [], payments: [], analytics: [], campaignReports: [] };
+                
+                for (const source of DATA_SOURCES.filter(s => s.active)) {
+                    const creatorsData = await fetchSheetData(source.apiKey, source.sheetId, 'Creators!A:L');
+                    const campaignsData = await fetchSheetData(source.apiKey, source.sheetId, 'Campaigns!A:I');
+                    const paymentsData = await fetchSheetData(source.apiKey, source.sheetId, 'Payments!A:G');
+                    const analyticsData = await fetchSheetData(source.apiKey, source.sheetId, 'Analytics!A:H');
+                    
+                    // Load campaign reports
+                    if (DATA.campaignReports.length === 0) {
+                        try {
+                            const reportsData = await fetchSheetData(source.apiKey, source.sheetId, 'CampaignReports!A:H');
+                            DATA.campaignReports.push(...parseCampaignReports(reportsData));
+                        } catch (e) {
+                            console.log('No CampaignReports sheet found');
+                        }
+                    }
+                    
+                    DATA.creators.push(...parseCreators(creatorsData));
+                    DATA.campaigns.push(...parseCampaigns(campaignsData));
+                    DATA.payments.push(...parsePayments(paymentsData));
+                    DATA.analytics.push(...parseAnalytics(analyticsData));
+                }
+                
                 updateDashboard();
+                updateCampaignReports();
                 updateLastSync();
             } catch (error) {
                 console.error('Error loading data:', error);
                 alert('Failed to load data. Please check your API key and Sheet ID.');
-                document.getElementById('configModal').classList.add('active');
             }
-
-            hideLoading();
         }
 
-        async function fetchSheetData(range) {
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?key=${CONFIG.API_KEY}`;
+        async function fetchSheetData(apiKey, sheetId, range) {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
             const response = await fetch(url);
             const data = await response.json();
             return data.values || [];
         }
 
         function parseCreators(data) {
-            if (data.length <= 1) return [];
-            const headers = data[0];
-            return data.slice(1).map(row => ({
-                name: row[0] || '',
-                platform: row[1] || '',
-                link: row[2] || '',
-                followers: parseInt(row[3]) || 0,
-                tier: row[4] || '',
-                pricing: parseInt(row[5]) || 0,
-                contact: row[6] || '',
-                category: row[7] || '',
-                avgReach: parseInt(row[8]) || 0,
-                status: row[9] || ''
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                name: r[0] || '', platform: r[1] || '', link: r[2] || '', followers: parseInt(r[3]) || 0,
+                tier: r[4] || '', pricing: parseInt(r[5]) || 0, contact: r[6] || '', category: r[7] || '',
+                avgReach: parseInt(r[8]) || 0, status: r[9] || '', product: r[10] || '', gender: r[11] || ''
             }));
         }
 
         function parseCampaigns(data) {
-            if (data.length <= 1) return [];
-            return data.slice(1).map(row => ({
-                brand: row[0] || '',
-                product: row[1] || '',
-                creatorCount: parseInt(row[2]) || 0,
-                budget: parseInt(row[3]) || 0,
-                spent: parseInt(row[4]) || 0,
-                posts: parseInt(row[5]) || 0,
-                status: row[6] || '',
-                startDate: row[7] || '',
-                endDate: row[8] || ''
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                brand: r[0] || '', product: r[1] || '', creatorCount: parseInt(r[2]) || 0,
+                budget: parseInt(r[3]) || 0, spent: parseInt(r[4]) || 0, posts: parseInt(r[5]) || 0,
+                status: r[6] || '', startDate: r[7] || '', endDate: r[8] || ''
             }));
         }
 
         function parsePayments(data) {
-            if (data.length <= 1) return [];
-            return data.slice(1).map(row => ({
-                creator: row[0] || '',
-                campaign: row[1] || '',
-                amount: parseInt(row[2]) || 0,
-                status: row[3] || '',
-                dueDate: row[4] || '',
-                paymentDate: row[5] || '',
-                method: row[6] || ''
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                creator: r[0] || '', campaign: r[1] || '', amount: parseInt(r[2]) || 0,
+                status: r[3] || '', dueDate: r[4] || '', paymentDate: r[5] || '', method: r[6] || ''
             }));
         }
 
         function parseAnalytics(data) {
-            if (data.length <= 1) return [];
-            return data.slice(1).map(row => ({
-                campaign: row[0] || '',
-                views: parseInt(row[1]) || 0,
-                impressions: parseInt(row[2]) || 0,
-                spend: parseInt(row[3]) || 0,
-                cpm: parseFloat(row[4]) || 0,
-                creators: parseInt(row[5]) || 0,
-                avgReach: parseInt(row[6]) || 0,
-                date: row[7] || ''
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                campaign: r[0] || '', views: parseInt(r[1]) || 0, impressions: parseInt(r[2]) || 0,
+                spend: parseInt(r[3]) || 0, cpm: parseFloat(r[4]) || 0, creators: parseInt(r[5]) || 0,
+                avgReach: parseInt(r[6]) || 0, date: r[7] || ''
             }));
         }
 
+        function parseCampaignReports(data) {
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                uploadDate: r[0] || '',
+                name: r[1] || '',
+                profileLink: r[2] || '',
+                postLink: r[3] || '',
+                pricing: parseInt(r[4]) || 0,
+                postingMonth: r[5] || '',
+                contactNo: r[6] || '',
+                product: r[7] || ''
+            }));
+        }
+
+        // Campaign Reports Upload
+        function openUploadModal() {
+            if (!APPS_SCRIPT_URL) {
+                alert('⚠️ Please configure Apps Script URL in Settings first!');
+                switchTab('settings');
+                return;
+            }
+            document.getElementById('uploadModal').classList.add('active');
+            document.getElementById('uploadPreview').style.display = 'none';
+            uploadedFileData = null;
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+            document.getElementById('fileInput').value = '';
+            uploadedFileData = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) processFile(files[0]);
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) processFile(files[0]);
+        }
+
+        function processFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                
+                if (jsonData.length > 0) {
+                    uploadedFileData = jsonData;
+                    showPreview(jsonData);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function showPreview(data) {
+            const headers = data[0];
+            const rows = data.slice(1);
+            
+            document.getElementById('previewTableHead').innerHTML = 
+                `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+            document.getElementById('previewTableBody').innerHTML = 
+                rows.slice(0, 10).map(row => `<tr>${row.map(cell => `<td>${cell || ''}</td>`).join('')}</tr>`).join('');
+            
+            document.getElementById('uploadPreview').style.display = 'block';
+        }
+
+        async function saveUploadedReport() {
+            if (!uploadedFileData || !APPS_SCRIPT_URL) return;
+
+            const headers = uploadedFileData[0];
+            const rows = uploadedFileData.slice(1);
+            
+            const reportData = rows.map(row => {
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = row[index] || '';
+                });
+                return [
+                    new Date().toLocaleString('en-IN'),
+                    obj['Name'] || obj['name'] || '',
+                    obj['Profile Link'] || obj['profile_link'] || '',
+                    obj['Post Link'] || obj['post_link'] || '',
+                    obj['Pricing'] || obj['pricing'] || '',
+                    obj['Posting Month'] || obj['Month'] || '',
+                    obj['Contact No'] || obj['contact'] || '',
+                    obj['Product'] || obj['product'] || ''
+                ];
+            });
+
+            try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: reportData })
+                });
+
+                alert('✅ Report uploaded successfully to Google Sheets!');
+                closeUploadModal();
+                setTimeout(() => loadAllData(), 2000);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('⚠️ Error uploading. Check console.');
+            }
+        }
+
+        function updateCampaignReports() {
+            const months = [...new Set(DATA.campaignReports.map(r => r.postingMonth).filter(Boolean))].sort();
+            
+            const tabsContainer = document.getElementById('reportMonthTabs');
+            tabsContainer.innerHTML = `
+                <div class="month-tab ${CURRENT_REPORT_MONTH === 'all' ? 'active' : ''}" onclick="filterReportsByMonth('all')">All Months</div>
+                ${months.map(m => `<div class="month-tab ${CURRENT_REPORT_MONTH === m ? 'active' : ''}" onclick="filterReportsByMonth('${m}')">${m}</div>`).join('')}
+            `;
+            
+            const container = document.getElementById('campaignReportsContainer');
+            const filteredReports = CURRENT_REPORT_MONTH === 'all' 
+                ? DATA.campaignReports 
+                : DATA.campaignReports.filter(r => r.postingMonth === CURRENT_REPORT_MONTH);
+            
+            if (filteredReports.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-secondary);">No reports uploaded yet.</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Upload Date</th><th>Name</th><th>Profile Link</th><th>Post Link</th><th>Pricing</th><th>Posting Month</th><th>Contact</th><th>Product</th></tr></thead>
+                        <tbody>${filteredReports.map(r => `
+                            <tr>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">${r.uploadDate}</td>
+                                <td><strong style="color: var(--text-primary);">${r.name}</strong></td>
+                                <td>${r.profileLink}</td>
+                                <td>${r.postLink}</td>
+                                <td><strong style="color: var(--success);">₹${(r.pricing || 0).toLocaleString()}</strong></td>
+                                <td>${r.postingMonth}</td>
+                                <td style="font-family: 'JetBrains Mono', monospace;">${r.contactNo}</td>
+                                <td>${r.product}</td>
+                            </tr>
+                        `).join('')}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function filterReportsByMonth(month) {
+            CURRENT_REPORT_MONTH = month;
+            updateCampaignReports();
+        }
+
         function updateDashboard() {
-            updateStats();
+            document.getElementById('totalCreators').textContent = DATA.creators.length;
+            document.getElementById('activeProducts').textContent = DATA.campaigns.filter(c => c.status === 'Active').length;
+            
+            const totalSpend = DATA.payments.filter(p => p.status === 'Paid').reduce((s, p) => s + p.amount, 0);
+            document.getElementById('totalSpend').textContent = `₹${totalSpend.toLocaleString()}`;
+            
+            const pendingAmount = DATA.payments.filter(p => p.status === 'Pending').reduce((s, p) => s + p.amount, 0);
+            document.getElementById('pendingPayments').textContent = `₹${pendingAmount.toLocaleString()}`;
+            
+            const avgCPM = DATA.analytics.length > 0 ? (DATA.analytics.reduce((s, a) => s + a.cpm, 0) / DATA.analytics.length).toFixed(2) : 0;
+            document.getElementById('avgCPM').textContent = `₹${avgCPM}`;
+            
             updateCreatorsTable();
             updateCampaignsTable();
             updatePaymentsTable();
             updateAnalyticsTable();
             updateCharts();
-            updateTimeline();
-            updatePlanner();
-        }
-
-        function updateStats() {
-            document.getElementById('totalCreators').textContent = DATA.creators.length;
-            document.getElementById('activeCampaigns').textContent = DATA.campaigns.filter(c => c.status === 'Active').length;
-            
-            const totalSpend = DATA.campaigns.reduce((sum, c) => sum + c.spent, 0);
-            document.getElementById('totalSpend').textContent = `₹${totalSpend.toLocaleString()}`;
-            
-            const pendingPayments = DATA.payments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + p.amount, 0);
-            document.getElementById('pendingPayments').textContent = `₹${pendingPayments.toLocaleString()}`;
-            
-            const avgCPM = DATA.analytics.length > 0 
-                ? (DATA.analytics.reduce((sum, a) => sum + a.cpm, 0) / DATA.analytics.length).toFixed(2)
-                : 0;
-            document.getElementById('avgCPM').textContent = `₹${avgCPM}`;
+            updateLockedCreatorsActivity();
+            updateDataSourcesList();
         }
 
         function updateCreatorsTable() {
             const tbody = document.getElementById('creatorsTableBody');
-            tbody.innerHTML = '';
+            tbody.innerHTML = DATA.creators.map(c => `
+                <tr>
+                    <td><strong style="color: var(--text-primary);">${c.name}</strong></td>
+                    <td>${getPlatformIcon(c.platform)} ${c.platform}</td>
+                    <td>${c.link ? `<a href="${c.link}" target="_blank" class="link-icon">🔗</a>` : '-'}</td>
+                    <td>${formatNumber(c.followers)}</td>
+                    <td><span class="${getTierClass(c.tier)}">${c.tier}</span></td>
+                    <td>${c.gender || '-'}</td>
+                    <td>${c.category}</td>
+                    <td>${formatNumber(c.avgReach)}</td>
+                    <td><strong style="color: var(--success);">₹${c.pricing.toLocaleString()}</strong></td>
+                    <td>${c.product || '-'}</td>
+                    <td>${getStatusBadge(c.status)}</td>
+                    <td style="font-family: 'JetBrains Mono', monospace;">${c.contact}</td>
+                </tr>
+            `).join('');
 
-            // Populate category filter
-            const categories = [...new Set(DATA.creators.map(c => c.category))].filter(Boolean);
-            const categoryFilter = document.getElementById('categoryFilter');
-            categoryFilter.innerHTML = '<option value="">All Categories</option>' + 
-                categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
-
-            DATA.creators.forEach(creator => {
-                const row = `
-                    <tr>
-                        <td><strong style="color: var(--text-primary);">${creator.name}</strong></td>
-                        <td><span class="platform-icon">${getPlatformIcon(creator.platform)} ${creator.platform}</span></td>
-                        <td>${formatNumber(creator.followers)}</td>
-                        <td><span class="tier-${creator.tier.toLowerCase()}">${creator.tier}</span></td>
-                        <td>${creator.category}</td>
-                        <td>${formatNumber(creator.avgReach)}</td>
-                        <td><strong style="color: var(--success);">₹${creator.pricing.toLocaleString()}</strong></td>
-                        <td>${getStatusBadge(creator.status)}</td>
-                        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">${creator.contact}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
+            const cats = [...new Set(DATA.creators.map(c => c.category))].filter(Boolean);
+            document.getElementById('categoryFilter').innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         function updateCampaignsTable() {
-            const tbody = document.getElementById('campaignsTableBody');
-            tbody.innerHTML = '';
-
-            DATA.campaigns.forEach(campaign => {
-                const progress = campaign.budget > 0 ? ((campaign.spent / campaign.budget) * 100).toFixed(1) : 0;
-                const row = `
-                    <tr>
-                        <td><strong style="color: var(--text-primary);">${campaign.brand}</strong></td>
-                        <td>${campaign.product}</td>
-                        <td>${campaign.creatorCount}</td>
-                        <td>₹${campaign.budget.toLocaleString()}</td>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <span>₹${campaign.spent.toLocaleString()}</span>
-                                <span style="font-size: 0.8rem; color: var(--text-secondary);">(${progress}%)</span>
-                            </div>
-                        </td>
-                        <td>${campaign.posts}</td>
-                        <td>${getStatusBadge(campaign.status)}</td>
-                        <td>
-                            <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="viewCampaignDetails('${campaign.brand}')">
-                                View Details
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
+            document.getElementById('campaignsTableBody').innerHTML = DATA.campaigns.map(c => {
+                const p = c.budget > 0 ? ((c.spent / c.budget) * 100).toFixed(1) : 0;
+                return `<tr>
+                    <td><strong style="color: var(--text-primary);">${c.brand}</strong></td>
+                    <td>${c.product}</td>
+                    <td>${c.creatorCount}</td>
+                    <td>₹${c.budget.toLocaleString()}</td>
+                    <td>₹${c.spent.toLocaleString()} <span style="font-size: 0.8rem; color: var(--text-secondary);">(${p}%)</span></td>
+                    <td>${c.posts}</td>
+                    <td>${getStatusBadge(c.status)}</td>
+                </tr>`;
+            }).join('');
         }
 
         function updatePaymentsTable() {
-            const tbody = document.getElementById('paymentsTableBody');
-            tbody.innerHTML = '';
-
-            DATA.payments.forEach(payment => {
-                const row = `
-                    <tr>
-                        <td><strong style="color: var(--text-primary);">${payment.creator}</strong></td>
-                        <td>${payment.campaign}</td>
-                        <td><strong style="color: var(--success);">₹${payment.amount.toLocaleString()}</strong></td>
-                        <td>${getStatusBadge(payment.status)}</td>
-                        <td>${payment.dueDate}</td>
-                        <td>${payment.paymentDate || '-'}</td>
-                        <td>${payment.method || '-'}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
+            document.getElementById('paymentsTableBody').innerHTML = DATA.payments.map(p => `
+                <tr>
+                    <td><strong style="color: var(--text-primary);">${p.creator}</strong></td>
+                    <td>${p.campaign}</td>
+                    <td><strong style="color: var(--success);">₹${p.amount.toLocaleString()}</strong></td>
+                    <td>${getStatusBadge(p.status)}</td>
+                    <td>${p.dueDate}</td>
+                    <td>${p.paymentDate || '-'}</td>
+                    <td>${p.method || '-'}</td>
+                </tr>
+            `).join('');
         }
 
         function updateAnalyticsTable() {
-            const tbody = document.getElementById('analyticsTableBody');
-            tbody.innerHTML = '';
-
-            DATA.analytics.forEach(item => {
-                const row = `
-                    <tr>
-                        <td><strong style="color: var(--text-primary);">${item.campaign}</strong></td>
-                        <td>${formatNumber(item.views)}</td>
-                        <td>${formatNumber(item.impressions)}</td>
-                        <td>₹${item.spend.toLocaleString()}</td>
-                        <td>₹${item.cpm.toFixed(2)}</td>
-                        <td>${item.creators}</td>
-                        <td>${formatNumber(item.avgReach)}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
+            document.getElementById('analyticsTableBody').innerHTML = DATA.analytics.map(i => `
+                <tr>
+                    <td><strong style="color: var(--text-primary);">${i.campaign}</strong></td>
+                    <td>${formatNumber(i.views)}</td>
+                    <td>₹${i.spend.toLocaleString()}</td>
+                    <td>₹${i.cpm.toFixed(2)}</td>
+                    <td>${i.creators}</td>
+                </tr>
+            `).join('');
         }
 
         function updateCharts() {
-            // Campaign Status Chart
-            const statusCounts = {};
-            DATA.campaigns.forEach(c => {
-                statusCounts[c.status] = (statusCounts[c.status] || 0) + 1;
-            });
-
-            if (charts.campaignStatus) charts.campaignStatus.destroy();
-            charts.campaignStatus = new Chart(document.getElementById('campaignStatusChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(statusCounts),
-                    datasets: [{
-                        data: Object.values(statusCounts),
-                        backgroundColor: ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Campaign Status Distribution', color: '#e2e8f0' },
-                        legend: { labels: { color: '#e2e8f0' } }
-                    }
-                }
-            });
-
-            // Tier Distribution Chart
-            const tierCounts = {};
-            DATA.creators.forEach(c => {
-                tierCounts[c.tier] = (tierCounts[c.tier] || 0) + 1;
-            });
-
-            if (charts.tierDistribution) charts.tierDistribution.destroy();
-            charts.tierDistribution = new Chart(document.getElementById('tierDistributionChart'), {
+            const pcm = {}; 
+            DATA.campaigns.forEach(c => { if (c.status === 'Active') pcm[c.product] = (pcm[c.product] || 0) + c.creatorCount; });
+            if (charts.productCreator) charts.productCreator.destroy();
+            charts.productCreator = new Chart(document.getElementById('productCreatorChart'), {
                 type: 'bar',
-                data: {
-                    labels: Object.keys(tierCounts),
-                    datasets: [{
-                        label: 'Creators',
-                        data: Object.values(tierCounts),
-                        backgroundColor: '#6366f1'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Creator Tier Distribution', color: '#e2e8f0' },
-                        legend: { labels: { color: '#e2e8f0' } }
-                    },
-                    scales: {
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } },
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } }
-                    }
-                }
+                data: { labels: Object.keys(pcm), datasets: [{ label: 'Active Creators', data: Object.values(pcm), backgroundColor: '#6366f1' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Active Creators by Product', color: '#e2e8f0' } } }
             });
 
-            // Performance Chart
+            const sc = {}; 
+            DATA.creators.forEach(c => sc[c.status] = (sc[c.status] || 0) + 1);
+            if (charts.creatorStatus) charts.creatorStatus.destroy();
+            charts.creatorStatus = new Chart(document.getElementById('creatorStatusChart'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(sc), datasets: [{ data: Object.values(sc), backgroundColor: ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Creator Status Distribution', color: '#e2e8f0' } } }
+            });
+
             if (charts.performance) charts.performance.destroy();
             charts.performance = new Chart(document.getElementById('performanceChart'), {
                 type: 'line',
-                data: {
-                    labels: DATA.analytics.map(a => a.campaign),
-                    datasets: [{
-                        label: 'Views',
-                        data: DATA.analytics.map(a => a.views),
-                        borderColor: '#6366f1',
-                        tension: 0.4
-                    }, {
-                        label: 'Impressions',
-                        data: DATA.analytics.map(a => a.impressions),
-                        borderColor: '#ec4899',
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Campaign Performance', color: '#e2e8f0' },
-                        legend: { labels: { color: '#e2e8f0' } }
-                    },
-                    scales: {
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } },
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } }
-                    }
-                }
+                data: { labels: DATA.analytics.map(a => a.campaign), datasets: [{ label: 'Views', data: DATA.analytics.map(a => a.views), borderColor: '#6366f1', tension: 0.4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Campaign Views', color: '#e2e8f0' } } }
             });
 
-            // CPM Chart
             if (charts.cpm) charts.cpm.destroy();
             charts.cpm = new Chart(document.getElementById('cpmChart'), {
                 type: 'bar',
-                data: {
-                    labels: DATA.analytics.map(a => a.campaign),
-                    datasets: [{
-                        label: 'CPM (₹)',
-                        data: DATA.analytics.map(a => a.cpm),
-                        backgroundColor: '#10b981'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'CPM by Campaign', color: '#e2e8f0' },
-                        legend: { labels: { color: '#e2e8f0' } }
-                    },
-                    scales: {
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } },
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } }
-                    }
-                }
+                data: { labels: DATA.analytics.map(a => a.campaign), datasets: [{ label: 'CPM (₹)', data: DATA.analytics.map(a => a.cpm), backgroundColor: '#10b981' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'CPM by Campaign', color: '#e2e8f0' } } }
             });
         }
 
-        function updateTimeline() {
-            const timeline = document.getElementById('recentActivity');
-            const recentCampaigns = DATA.campaigns.slice(0, 5);
-            
-            timeline.innerHTML = recentCampaigns.map(campaign => `
-                <div class="timeline-item">
-                    <div class="timeline-date">${campaign.startDate}</div>
-                    <div class="timeline-content">
-                        <strong style="color: var(--text-primary);">${campaign.brand} - ${campaign.product}</strong>
-                        <div style="margin-top: 0.5rem; color: var(--text-secondary);">
-                            ${campaign.creatorCount} creators • ₹${campaign.spent.toLocaleString()} spent • ${getStatusBadge(campaign.status)}
-                        </div>
-                    </div>
+        function updateLockedCreatorsActivity() {
+            const lc = DATA.creators.filter(c => c.status === 'Locked');
+            const container = document.getElementById('lockedCreatorsActivity');
+            if (lc.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">No locked creators yet</div>';
+                return;
+            }
+            const cm = {};
+            lc.forEach(cr => {
+                if (!cm[cr.name]) cm[cr.name] = { name: cr.name, pricing: cr.pricing, products: [] };
+                if (cr.product) cr.product.split(',').map(p => p.trim()).forEach(p => { if (p && !cm[cr.name].products.includes(p)) cm[cr.name].products.push(p); });
+            });
+            container.innerHTML = Object.values(cm).slice(0, 20).map(cr => `
+                <div class="locked-creator-item">
+                    <strong>${cr.name}</strong>
+                    <div style="color: var(--text-secondary); margin-top: 0.5rem;">💰 Pricing: <span style="color: var(--success); font-weight: 600;">₹${cr.pricing.toLocaleString()}</span></div>
+                    <div class="locked-creator-products">${cr.products.length > 0 ? cr.products.map(p => `<span class="product-tag">🎯 ${p}</span>`).join('') : '<span style="color: var(--text-secondary);">No product assigned</span>'}</div>
                 </div>
             `).join('');
         }
 
-        function updatePlanner() {
-            // Simple upcoming posts view
-            const calendar = document.getElementById('calendarView');
-            // This would need actual posting dates from your data
-            calendar.innerHTML = `
-                <div class="empty-state">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    <h3>Weekly Planner</h3>
-                    <p>Add a "PostingDate" column to your Campaigns sheet to see scheduled posts here</p>
-                </div>
-            `;
+        function updateCalendar() {
+            const mn = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            document.getElementById('currentMonthYear').textContent = `${mn[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
+            const cg = document.getElementById('calendarGrid'); 
+            cg.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div style="font-weight: 700; color: var(--text-primary); padding: 0.5rem; text-align: center;">${d}</div>`).join('');
         }
 
+        function previousMonth() { currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1); updateCalendar(); }
+        function nextMonth() { currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1); updateCalendar(); }
+
         function filterCreators() {
-            const search = document.getElementById('creatorSearch').value.toLowerCase();
-            const platform = document.getElementById('platformFilter').value;
-            const tier = document.getElementById('tierFilter').value;
-            const category = document.getElementById('categoryFilter').value;
-
-            const filtered = DATA.creators.filter(creator => {
-                const matchSearch = creator.name.toLowerCase().includes(search) || 
-                                  creator.category.toLowerCase().includes(search);
-                const matchPlatform = !platform || creator.platform === platform;
-                const matchTier = !tier || creator.tier === tier;
-                const matchCategory = !category || creator.category === category;
-                
-                return matchSearch && matchPlatform && matchTier && matchCategory;
-            });
-
-            const tbody = document.getElementById('creatorsTableBody');
-            tbody.innerHTML = '';
-            filtered.forEach(creator => {
-                const row = `
-                    <tr>
-                        <td><strong style="color: var(--text-primary);">${creator.name}</strong></td>
-                        <td><span class="platform-icon">${getPlatformIcon(creator.platform)} ${creator.platform}</span></td>
-                        <td>${formatNumber(creator.followers)}</td>
-                        <td><span class="tier-${creator.tier.toLowerCase()}">${creator.tier}</span></td>
-                        <td>${creator.category}</td>
-                        <td>${formatNumber(creator.avgReach)}</td>
-                        <td><strong style="color: var(--success);">₹${creator.pricing.toLocaleString()}</strong></td>
-                        <td>${getStatusBadge(creator.status)}</td>
-                        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">${creator.contact}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
+            const s = document.getElementById('creatorSearch').value.toLowerCase();
+            const pf = document.getElementById('platformFilter').value;
+            const tf = document.getElementById('tierFilter').value;
+            const cf = document.getElementById('categoryFilter').value;
+            const gf = document.getElementById('genderFilter').value;
+            const sf = document.getElementById('statusFilterCreators').value;
+            const f = DATA.creators.filter(c => 
+                (c.name.toLowerCase().includes(s) || c.category.toLowerCase().includes(s)) &&
+                (!pf || c.platform === pf) && (!tf || c.tier === tf) && (!cf || c.category === cf) &&
+                (!gf || c.gender === gf) && (!sf || c.status === sf)
+            );
+            document.getElementById('creatorsTableBody').innerHTML = f.map(c => `
+                <tr>
+                    <td><strong style="color: var(--text-primary);">${c.name}</strong></td>
+                    <td>${getPlatformIcon(c.platform)} ${c.platform}</td>
+                    <td>${c.link ? `<a href="${c.link}" target="_blank" class="link-icon">🔗</a>` : '-'}</td>
+                    <td>${formatNumber(c.followers)}</td>
+                    <td><span class="${getTierClass(c.tier)}">${c.tier}</span></td>
+                    <td>${c.gender || '-'}</td>
+                    <td>${c.category}</td>
+                    <td>${formatNumber(c.avgReach)}</td>
+                    <td><strong style="color: var(--success);">₹${c.pricing.toLocaleString()}</strong></td>
+                    <td>${c.product || '-'}</td>
+                    <td>${getStatusBadge(c.status)}</td>
+                    <td style="font-family: 'JetBrains Mono', monospace;">${c.contact}</td>
+                </tr>
+            `).join('');
         }
 
         function filterPayments() {
-            const status = document.getElementById('paymentStatusFilter').value;
-            const filtered = !status ? DATA.payments : DATA.payments.filter(p => p.status === status);
-
-            const tbody = document.getElementById('paymentsTableBody');
-            tbody.innerHTML = '';
-            filtered.forEach(payment => {
-                const row = `
-                    <tr>
-                        <td><strong style="color: var(--text-primary);">${payment.creator}</strong></td>
-                        <td>${payment.campaign}</td>
-                        <td><strong style="color: var(--success);">₹${payment.amount.toLocaleString()}</strong></td>
-                        <td>${getStatusBadge(payment.status)}</td>
-                        <td>${payment.dueDate}</td>
-                        <td>${payment.paymentDate || '-'}</td>
-                        <td>${payment.method || '-'}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
+            const s = document.getElementById('paymentStatusFilter').value;
+            const f = !s ? DATA.payments : DATA.payments.filter(p => p.status === s);
+            document.getElementById('paymentsTableBody').innerHTML = f.map(p => `
+                <tr>
+                    <td><strong style="color: var(--text-primary);">${p.creator}</strong></td>
+                    <td>${p.campaign}</td>
+                    <td><strong style="color: var(--success);">₹${p.amount.toLocaleString()}</strong></td>
+                    <td>${getStatusBadge(p.status)}</td>
+                    <td>${p.dueDate}</td>
+                    <td>${p.paymentDate || '-'}</td>
+                    <td>${p.method || '-'}</td>
+                </tr>
+            `).join('');
         }
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
-            
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+        function switchTab(t) {
+            if (window.innerWidth <= 768) toggleMobileSidebar();
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(nt => nt.classList.remove('active'));
+            document.getElementById(t).classList.add('active');
+            document.querySelector(`[onclick*="switchTab('${t}')"]`).classList.add('active');
         }
 
-        function getPlatformIcon(platform) {
-            const icons = {
-                'Instagram': '📸',
-                'YouTube': '▶️',
-                'Facebook': '👥',
-                'TikTok': '🎵'
-            };
-            return icons[platform] || '🌐';
+        function applyMonthFilter() { CURRENT_MONTH_FILTER = document.getElementById('monthFilter').value; }
+        function getPlatformIcon(p) { return { 'Instagram': '📸', 'YouTube': '▶️', 'Facebook': '👥' }[p] || '🌐'; }
+        function getTierClass(t) { return { 'Tier 1': 'tier-1', 'Tier 2': 'tier-2', 'Tier 3': 'tier-3', 'Tier 4': 'tier-4', 'Tier 5': 'tier-5' }[t] || ''; }
+        function getStatusBadge(s) { 
+            const sm = { 'Active': 'success', 'Pending': 'warning', 'Completed': 'primary', 'Paid': 'success', 'Overdue': 'danger', 'Locked': 'success', 'Shortlisted': 'secondary', 'Reached Out': 'primary', 'Negotiation': 'warning' }; 
+            return `<span class="badge badge-${sm[s] || 'secondary'}">${s}</span>`; 
         }
-
-        function getStatusBadge(status) {
-            const statusMap = {
-                'Active': 'success',
-                'Pending': 'warning',
-                'Completed': 'primary',
-                'Paid': 'success',
-                'Overdue': 'danger',
-                'Published': 'success',
-                'Draft': 'secondary'
-            };
-            const type = statusMap[status] || 'secondary';
-            return `<span class="badge badge-${type}">${status}</span>`;
-        }
-
-        function formatNumber(num) {
-            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-            return num.toString();
-        }
-
-        function updateLastSync() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById('lastSync').textContent = `Last sync: ${timeStr}`;
-        }
-
-        function showLoading() {
-            // Could add loading spinner
-        }
-
-        function hideLoading() {
-            // Remove loading spinner
-        }
-
-        function viewCampaignDetails(brand) {
-            alert(`Viewing details for ${brand} campaign. This would open a detailed modal.`);
-        }
-
-        // Auto-refresh every 5 minutes
-        setInterval(() => {
-            if (CONFIG.API_KEY && CONFIG.SHEET_ID) {
-                loadData();
-            }
-        }, 5 * 60 * 1000);
+        function formatNumber(n) { return n >= 1000000 ? (n / 1000000).toFixed(1) + 'M' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : n.toString(); }
+        function updateLastSync() { document.getElementById('lastSync').textContent = `Last sync: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`; }
+        
+        setInterval(() => { if (DATA_SOURCES.filter(s => s.active).length > 0) loadAllData(); }, 5 * 60 * 1000);
     </script>
 </body>
 </html>
+
