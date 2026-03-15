@@ -748,7 +748,7 @@
         let currentWhatsAppContact = { phone: '', name: '', product: '' };
         let currentUser = null;
         let USER_ROLE = null;
-        let CONFIG_SHEET_ID = '1xamzE15vqa5XycO0UZL30E5NKoryCKrdhZGxQvnOwTk';
+        let CONFIG_SHEET_ID = '1BsQeGapZkc5eEbMe7gyLfcIX3KioPP21yT9zVA4PGEg';
         let CONFIG_API_KEY = 'AIzaSyA4O-2ZHOMf22VBqogIbE_Vegf6BhLjx6I';
         let ADMIN_PASSWORD = 'admin@2026';
         let SETTINGS_UNLOCKED = false;
@@ -1937,6 +1937,8 @@ function switchTab(t) {
             lastBackup: localStorage.getItem('lastBackupTime') || null
         };
         
+        let BACKUP_INITIALIZED = false; // Prevent duplicate initializations
+        
         // Save backup configuration
         async function saveBackupConfigToCloud() {
             const scriptUrl = document.getElementById('backupScriptUrl').value.trim();
@@ -2028,10 +2030,29 @@ function switchTab(t) {
             
             console.log(`✅ Automated cloud backup started (every ${BACKUP_CONFIG.interval} hours)`);
             
-            // Perform initial backup after 5 seconds
-            setTimeout(() => {
-                performCloudBackup();
-            }, 5000);
+            // Only perform initial backup if last backup was more than interval hours ago
+            const lastBackup = BACKUP_CONFIG.lastBackup;
+            if (lastBackup) {
+                const timeSinceLastBackup = Date.now() - new Date(lastBackup).getTime();
+                const intervalMs = BACKUP_CONFIG.interval * 60 * 60 * 1000;
+                
+                if (timeSinceLastBackup >= intervalMs) {
+                    console.log('⏰ Last backup was more than ' + BACKUP_CONFIG.interval + ' hours ago, running backup now...');
+                    setTimeout(() => {
+                        performCloudBackup();
+                    }, 5000);
+                } else {
+                    const remainingMs = intervalMs - timeSinceLastBackup;
+                    const remainingHours = Math.round(remainingMs / (60 * 60 * 1000) * 10) / 10;
+                    console.log(`⏱️ Next backup in ${remainingHours} hours`);
+                }
+            } else {
+                // No previous backup - this is first time, run it
+                console.log('🆕 First backup - running in 5 seconds...');
+                setTimeout(() => {
+                    performCloudBackup();
+                }, 5000);
+            }
         }
         
         // Perform cloud backup via Apps Script
@@ -2108,14 +2129,22 @@ function switchTab(t) {
                         btn.disabled = false;
                         btn.innerHTML = originalHTML;
                     }, 2000);
+                    
+                    // Only show alert for manual backups (when button was clicked)
+                    alert('✅ Backup completed!\\n\\n' +
+                          'Creators: ' + backupData.creators.length + '\\n' +
+                          'Campaigns: ' + backupData.campaigns.length + '\\n' +
+                          'Payments: ' + backupData.payments.length + '\\n' +
+                          'Analytics: ' + backupData.analytics.length + '\\n\\n' +
+                          'Check your Backup Sheet for 5 new tabs!');
+                } else {
+                    // Automatic backup - just log to console
+                    console.log('🔔 Automatic backup completed silently');
+                    console.log('Creators:', backupData.creators.length);
+                    console.log('Campaigns:', backupData.campaigns.length);
+                    console.log('Payments:', backupData.payments.length);
+                    console.log('Analytics:', backupData.analytics.length);
                 }
-                
-                alert('✅ Backup completed!\\n\\n' +
-                      'Creators: ' + backupData.creators.length + '\\n' +
-                      'Campaigns: ' + backupData.campaigns.length + '\\n' +
-                      'Payments: ' + backupData.payments.length + '\\n' +
-                      'Analytics: ' + backupData.analytics.length + '\\n\\n' +
-                      'Check your Backup Sheet for 5 new tabs!');
                 
             } catch (error) {
                 console.error('❌ Cloud backup failed:', error);
@@ -2224,8 +2253,13 @@ function switchTab(t) {
             updateBackupStatus();
             updateBackupHistory();
             
-            if (BACKUP_CONFIG.enabled) {
+            // Only start cloud backup once per session
+            if (BACKUP_CONFIG.enabled && !BACKUP_INITIALIZED) {
+                BACKUP_INITIALIZED = true;
+                console.log('🔄 Initializing cloud backup for the first time this session');
                 startCloudBackup();
+            } else if (BACKUP_INITIALIZED) {
+                console.log('✓ Backup already initialized this session, skipping');
             }
         }
         
@@ -2755,14 +2789,16 @@ function switchTab(t) {
                 
                 // Parse users (skip header)
                 const cloudUsers = rows.slice(1).map(row => ({
-                    username: row[1],
-                    password: row[2],
-                    name: row[3],
-                    role: row[4],
-                    isActive: row[5] === 'TRUE',
-                    sheetId: row[6] || '',
-                    apiKey: row[7] || ''
+                    username: (row[1] || '').trim(),
+                    password: (row[2] || '').trim(),
+                    name: (row[3] || '').trim(),
+                    role: (row[4] || '').trim(),
+                    isActive: (row[5] || '').trim() === 'TRUE',
+                    sheetId: (row[6] || '').trim(),
+                    apiKey: (row[7] || '').trim()
                 })).filter(u => u.isActive && u.role === 'user');
+                
+                console.log('Parsed users from Config Sheet:', cloudUsers);
                 
                 // Update CONFIG
                 CONFIG.USER_ACCOUNTS = cloudUsers;
