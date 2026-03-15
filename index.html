@@ -749,7 +749,7 @@
         let currentUser = null;
         let USER_ROLE = null;
         let CONFIG_SHEET_ID = '1xamzE15vqa5XycO0UZL30E5NKoryCKrdhZGxQvnOwTk';
-        let CONFIG_API_KEY = 'AIzaSyA4O-2ZHOMf22VBqogIbE_Vegf6BhLjx6I';
+        let CONFIG_API_KEY = 'IzaSyA4O-2ZHOMf22VBqogIbE_Vegf6BhLjx6I';
         let ADMIN_PASSWORD = 'admin@2026';
         let SETTINGS_UNLOCKED = false;
 
@@ -777,24 +777,55 @@
             const password = document.getElementById('password').value;
             const errorEl = document.getElementById('loginError');
             
+            // DEBUG: Log login attempt
+            console.log('=== LOGIN ATTEMPT ===');
+            console.log('Username entered:', username);
+            console.log('Password entered:', password);
+            console.log('CONFIG.ADMIN_CREDENTIALS:', CONFIG.ADMIN_CREDENTIALS);
+            console.log('CONFIG.USER_ACCOUNTS:', CONFIG.USER_ACCOUNTS);
+            console.log('Number of user accounts:', CONFIG.USER_ACCOUNTS.length);
+            
             let isValid = false;
             let userRole = null;
             let displayName = username;
             
             // Check admin
+            console.log('Checking admin login...');
+            console.log('Admin username match:', username === CONFIG.ADMIN_CREDENTIALS.username);
+            console.log('Admin password match:', password === CONFIG.ADMIN_CREDENTIALS.password);
+            
             if (username === CONFIG.ADMIN_CREDENTIALS.username && password === CONFIG.ADMIN_CREDENTIALS.password) {
                 isValid = true;
                 userRole = 'admin';
                 displayName = 'Administrator';
+                console.log('✅ Admin login successful!');
             } else {
                 // Check user accounts
+                console.log('Checking user accounts...');
+                
+                // DEBUG: Check each user
+                CONFIG.USER_ACCOUNTS.forEach((u, index) => {
+                    console.log(`User ${index}:`, u.username, '/', u.password);
+                    console.log(`  Username match: ${u.username === username}`);
+                    console.log(`  Password match: ${u.password === password}`);
+                });
+                
                 const userAccount = CONFIG.USER_ACCOUNTS.find(u => u.username === username && u.password === password);
+                console.log('Found user account:', userAccount);
+                
                 if (userAccount) {
                     isValid = true;
                     userRole = 'user';
                     displayName = userAccount.name;
+                    console.log('✅ User login successful!');
+                } else {
+                    console.log('❌ No matching user found');
                 }
             }
+            
+            console.log('Login valid:', isValid);
+            console.log('User role:', userRole);
+            console.log('===================');
             
             if (isValid) {
                 const session = { user: username, role: userRole, displayName: displayName, timestamp: Date.now() };
@@ -830,6 +861,7 @@
                     loadAllData();
                 }
             } else {
+                console.log('❌ Login failed - showing error message');
                 errorEl.textContent = '❌ Invalid username or password';
                 errorEl.style.display = 'block';
                 setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
