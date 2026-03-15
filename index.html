@@ -1,474 +1,1461 @@
-// This file contains the complete JavaScript for dashboard-part1-FINAL-FIXED.html
-// Copy this entire content into the <script> section of the HTML file
-
-// ========================================
-// LOGIN SYSTEM
-// ========================================
-function checkAuth() {
-    const session = JSON.parse(localStorage.getItem('dashboardSession') || 'null');
-    if (!session) return false;
-    
-    const now = Date.now();
-    if (now - session.timestamp > CONFIG.SESSION_TIMEOUT) {
-        localStorage.removeItem('dashboardSession');
-        return false;
-    }
-    
-    currentUser = session.user;
-    return true;
-}
-
-function handleLogin() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    const errorEl = document.getElementById('loginError');
-    
-    if (username === CONFIG.LOGIN_CREDENTIALS.username && password === CONFIG.LOGIN_CREDENTIALS.password) {
-        const session = { user: username, timestamp: Date.now() };
-        localStorage.setItem('dashboardSession', JSON.stringify(session));
-        currentUser = username;
-        
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('mainContainer').style.display = 'block';
-        document.getElementById('currentUsername').textContent = username;
-        
-        if (DATA_SOURCES.length === 0) {
-            document.getElementById('configModal').classList.add('active');
-        } else {
-            loadAllData();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Dashboard - Part 1</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #ec4899;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --bg-main: #0f0f23; --bg-card: #1a1a2e; --bg-elevated: #25253f;
+            --text-primary: #e2e8f0; --text-secondary: #94a3b8; --border: #2d2d44;
+            --sidebar-width: 280px; --sidebar-collapsed: 60px;
         }
-    } else {
-        errorEl.textContent = '❌ Invalid username or password';
-        errorEl.style.display = 'block';
-        setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
-    }
-}
-
-function handleLogout() {
-    if (confirm('Are you sure you want to logout?')) {
-        localStorage.removeItem('dashboardSession');
-        window.location.reload();
-    }
-}
-
-// ========================================
-// INITIALIZATION
-// ========================================
-document.addEventListener('DOMContentLoaded', () => {
-    if (checkAuth()) {
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('mainContainer').style.display = 'block';
-        document.getElementById('currentUsername').textContent = currentUser;
+        body { font-family: 'Outfit', sans-serif; background: var(--bg-main); color: var(--text-primary); line-height: 1.6; overflow-x: hidden; }
+        .bg-gradient { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.4; background: radial-gradient(ellipse at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(236, 72, 153, 0.15) 0%, transparent 50%); }
         
-        if (DATA_SOURCES.length === 0) {
-            document.getElementById('configModal').classList.add('active');
-        } else {
-            loadAllData();
+        /* Login Screen */
+        .login-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%); z-index: 3000; }
+        .login-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 3rem; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+        .login-logo { font-size: 3.5rem; text-align: center; margin-bottom: 1rem; }
+        .login-title { font-size: 2rem; font-weight: 800; text-align: center; margin-bottom: 0.5rem; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .login-subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem; }
+        .login-input { width: 100%; padding: 0.875rem 1rem; margin-bottom: 1rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 1rem; font-family: 'Outfit', sans-serif; transition: all 0.3s; }
+        .login-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+        .login-btn { width: 100%; padding: 0.875rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; font-family: 'Outfit', sans-serif; margin-top: 0.5rem; }
+        .login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4); }
+        .login-error { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; display: none; font-size: 0.9rem; }
+        .login-footer { text-align: center; color: var(--text-secondary); font-size: 0.85rem; margin-top: 1.5rem; }
+        
+        .sidebar { position: fixed; left: 0; top: 0; height: 100%; width: var(--sidebar-width); background: var(--bg-card); border-right: 1px solid var(--border); z-index: 1000; transition: width 0.3s ease; overflow: hidden; display: flex; flex-direction: column; }
+        .sidebar.collapsed { width: var(--sidebar-collapsed); }
+        .sidebar-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+        .sidebar-toggle { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; cursor: pointer; transition: all 0.3s ease; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .sidebar-toggle:hover { background: var(--primary); border-color: var(--primary); }
+        .sidebar-logo { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; transition: opacity 0.3s ease; }
+        .sidebar.collapsed .sidebar-logo { opacity: 0; display: none; }
+        .hamburger { width: 24px; height: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        .hamburger span { display: block; height: 3px; width: 100%; background: var(--text-primary); border-radius: 3px; }
+        
+        .nav-tabs { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem 0; flex: 1; }
+        .nav-tab { padding: 1rem 1.5rem; background: transparent; border: none; border-left: 3px solid transparent; color: var(--text-secondary); font-weight: 600; cursor: pointer; text-align: left; width: 100%; transition: all 0.3s ease; display: flex; align-items: center; gap: 1rem; white-space: nowrap; }
+        .nav-tab-icon { font-size: 1.2rem; min-width: 24px; text-align: center; }
+        .nav-tab-text { transition: opacity 0.3s ease; }
+        .sidebar.collapsed .nav-tab-text { opacity: 0; display: none; }
+        .nav-tab:hover { color: var(--text-primary); background: var(--bg-elevated); }
+        .nav-tab.active { color: var(--primary); border-left-color: var(--primary); background: var(--bg-elevated); }
+        
+        .user-info { padding: 1rem 1.5rem; border-top: 1px solid var(--border); }
+        .user-name { color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; }
+        .user-role { color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.75rem; }
+        .logout-btn { width: 100%; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s; font-weight: 600; font-family: 'Outfit', sans-serif; }
+        .logout-btn:hover { background: var(--danger); color: white; }
+        .sidebar.collapsed .user-info { opacity: 0; display: none; }
+        
+        .container { position: relative; z-index: 1; max-width: 1600px; margin: 0 auto; padding: 2rem; margin-left: var(--sidebar-width); transition: margin-left 0.3s ease; }
+        .container.sidebar-collapsed { margin-left: var(--sidebar-collapsed); }
+        
+        header { margin-bottom: 3rem; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        h1 { font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.02em; }
+        .sync-info { display: flex; align-items: center; gap: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-secondary); flex-wrap: wrap; }
+        .sync-status, .month-filter { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s ease infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        select, input[type="text"], input[type="password"], input[type="file"], textarea { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary); padding: 0.75rem 1rem; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 0.95rem; }
+        select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+        input[type="file"] { cursor: pointer; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s; font-family: 'Outfit', sans-serif; font-size: 0.95rem; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); }
+        .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--bg-elevated); border-color: var(--primary); }
+        .btn-small { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .btn-icon { padding: 0.5rem; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; transition: all 0.3s; }
+        .stat-card:hover { transform: translateY(-4px); border-color: var(--primary); box-shadow: 0 12px 30px rgba(99, 102, 241, 0.2); }
+        .stat-label { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: 0.5px; }
+        .stat-value { font-size: 2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem; }
+        
+        .tab-content { display: none; } 
+        .tab-content.active { display: block; }
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+        .card-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
+        .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        thead { background: var(--bg-elevated); position: sticky; top: 0; z-index: 10; }
+        th { padding: 1rem; text-align: left; font-weight: 700; color: var(--text-primary); text-transform: uppercase; font-size: 0.75rem; border-bottom: 2px solid var(--border); letter-spacing: 0.5px; }
+        td { padding: 1rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+        tbody tr { transition: background 0.2s; } 
+        tbody tr:hover { background: var(--bg-elevated); }
+        
+        .controls { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .search-box { flex: 1; min-width: 250px; position: relative; }
+        .search-box input { width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+        
+        .badge { display: inline-block; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+        .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .badge-primary { background: rgba(99, 102, 241, 0.15); color: var(--primary); }
+        .badge-secondary { background: rgba(148, 163, 184, 0.15); color: var(--text-secondary); }
+        .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        .badge-info { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+        
+        /* Updated Status Colors */
+        .status-locked { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+        .status-shipped { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+        .status-pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .status-negotiation { background: rgba(236, 72, 153, 0.15); color: var(--secondary); }
+        .status-drop { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        
+        /* Product Status Colors - WITH DROP + NOT ASSIGNED */
+        .product-briefed { background: rgba(99, 102, 241, 0.15); color: var(--primary); }
+        .product-content-ready { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+        .product-posted { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .product-hold { background: rgba(148, 163, 184, 0.15); color: var(--text-secondary); }
+        .product-drop { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        .product-not-assigned { background: rgba(71, 85, 105, 0.15); color: #475569; }
+        
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .chart-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; height: 350px; }
+        
+        .link-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: rgba(99, 102, 241, 0.1); border: 1px solid transparent; border-radius: 6px; color: var(--primary); text-decoration: none; transition: all 0.3s; font-size: 1.1rem; padding: 0.25rem; }
+        .link-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+        .link-icon svg { width: 20px; height: 20px; display: block; }
+        
+        .tier-1 { color: #f59e0b; font-weight: 700; } 
+        .tier-2 { color: #ec4899; font-weight: 700; }
+        .tier-3 { color: #8b5cf6; font-weight: 700; } 
+        .tier-4 { color: #06b6d4; font-weight: 700; } 
+        .tier-5 { color: #10b981; font-weight: 700; }
+        
+        .locked-creator-item { background: var(--bg-elevated); padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border-left: 3px solid #8b5cf6; position: relative; }
+        .locked-creator-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+        .locked-creator-name { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+        .locked-creator-actions { display: flex; gap: 0.5rem; }
+        .locked-creator-meta { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.9rem; }
+        .locked-creator-platforms { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .platform-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.4rem 0.8rem; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); border-radius: 6px; color: var(--primary); font-size: 0.85rem; font-weight: 600; text-decoration: none; transition: all 0.3s; }
+        .platform-badge:hover { background: var(--primary); color: white; transform: translateY(-2px); }
+        .platform-badge svg { width: 16px; height: 16px; margin-right: 0.25rem; }
+        .locked-creator-products { margin-bottom: 1rem; }
+        .product-status-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; background: var(--bg-card); border-radius: 6px; margin-bottom: 0.5rem; }
+        .product-status-name { font-weight: 600; color: var(--text-primary); }
+        .progress-bar { width: 100%; height: 8px; background: var(--bg-card); border-radius: 4px; overflow: hidden; margin-top: 1rem; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--success), var(--primary)); transition: width 0.3s ease; }
+        .locked-creator-contact { display: flex; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-top: 1rem; flex-wrap: wrap; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; max-width: 900px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .close-modal { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.5rem; transition: color 0.3s; }
+        .close-modal:hover { color: var(--danger); }
+        
+        .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 3rem 2rem; text-align: center; transition: all 0.3s ease; cursor: pointer; }
+        .upload-area:hover { border-color: var(--primary); background: rgba(99, 102, 241, 0.05); }
+        .upload-area.dragover { border-color: var(--primary); background: rgba(99, 102, 241, 0.1); }
+        
+        .month-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .month-tab { padding: 0.5rem 1rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); cursor: pointer; transition: all 0.3s ease; font-size: 0.9rem; font-weight: 600; }
+        .month-tab:hover { border-color: var(--primary); color: var(--text-primary); }
+        .month-tab.active { background: var(--primary); border-color: var(--primary); color: white; }
+        
+        .data-source-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; }
+        .data-source-item.active { border-color: var(--success); }
+        
+        .alert { padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; }
+        .alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); color: var(--warning); }
+        .alert-info { background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); color: var(--primary); }
+        .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); color: var(--success); }
+        
+        .template-selector { background: var(--bg-elevated); padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+        .template-option { padding: 0.75rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.3s; }
+        .template-option:hover { border-color: var(--primary); background: var(--bg-elevated); }
+        .template-title { font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem; }
+        .template-preview { font-size: 0.85rem; color: var(--text-secondary); }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: var(--sidebar-width); transform: translateX(-100%); }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .container { margin-left: 0 !important; padding: 1rem; padding-top: 5rem; }
+            h1 { font-size: 1.8rem; }
+            .stats-grid, .charts-grid { grid-template-columns: 1fr; }
+            .sidebar-toggle-mobile { display: block; position: fixed; top: 1rem; left: 1rem; z-index: 1001; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; width: 40px; height: 40px; cursor: pointer; }
+            .locked-creator-header { flex-direction: column; gap: 1rem; }
+            .locked-creator-meta { flex-direction: column; gap: 0.5rem; }
         }
-    }
+        @media (min-width: 769px) { .sidebar-toggle-mobile { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
     
-    if (localStorage.getItem('sidebarCollapsed') === 'true') {
-        document.getElementById('sidebar').classList.add('collapsed');
-        document.getElementById('mainContainer').classList.add('sidebar-collapsed');
-    }
+    <!-- Login Screen -->
+    <div id="loginContainer" class="login-container">
+        <div class="login-box">
+            <div class="login-logo">📊</div>
+            <h2 class="login-title">Database Dashboard</h2>
+            <p class="login-subtitle">Secure access • Part 1 with Login</p>
+            <div id="loginError" class="login-error"></div>
+            <input type="text" id="username" class="login-input" placeholder="Username" autocomplete="username">
+            <input type="password" id="password" class="login-input" placeholder="Password" autocomplete="current-password" onkeypress="if(event.key === 'Enter') handleLogin()">
+            <button class="login-btn" onclick="handleLogin()">🔐 Login</button>
+            <div class="login-footer">Default: admin / admin@2026</div>
+        </div>
+    </div>
     
-    if (APPS_SCRIPT_URL) {
-        document.getElementById('appsScriptUrl').value = APPS_SCRIPT_URL;
-    }
-});
-
-// Sidebar functions
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const container = document.getElementById('mainContainer');
-    sidebar.classList.toggle('collapsed');
-    container.classList.toggle('sidebar-collapsed');
-    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-}
-
-function toggleMobileSidebar() {
-    document.getElementById('sidebar').classList.toggle('mobile-open');
-}
-
-// ========================================
-// DATA SOURCE MANAGEMENT
-// ========================================
-function addDataSource() {
-    document.getElementById('sheetNameInput').value = '';
-    document.getElementById('apiKeyInput').value = '';
-    document.getElementById('sheetIdInput').value = '';
-    document.getElementById('configModal').classList.add('active');
-}
-
-function saveConfig() {
-    const name = document.getElementById('sheetNameInput').value.trim() || 'Sheet ' + (DATA_SOURCES.length + 1);
-    const apiKey = document.getElementById('apiKeyInput').value.trim();
-    const sheetId = document.getElementById('sheetIdInput').value.trim();
-
-    if (!apiKey || !sheetId) {
-        alert('Please enter both API Key and Sheet ID');
-        return;
-    }
-
-    const source = { id: Date.now().toString(), name, apiKey, sheetId, active: true };
-    DATA_SOURCES.push(source);
-    localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+    <button class="sidebar-toggle sidebar-toggle-mobile" onclick="toggleMobileSidebar()" style="display: none;">
+        <div class="hamburger"><span></span><span></span><span></span></div>
+    </button>
     
-    closeConfigModal();
-    updateDataSourcesList();
-    loadAllData();
-}
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-logo">📊 Menu</span>
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <div class="hamburger"><span></span><span></span><span></span></div>
+            </button>
+        </div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('overview')">
+                <span class="nav-tab-icon">📊</span><span class="nav-tab-text">Overview</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('creators')">
+                <span class="nav-tab-icon">👥</span><span class="nav-tab-text">Creators</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('campaigns')">
+                <span class="nav-tab-icon">🎯</span><span class="nav-tab-text">Campaigns</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('payments')">
+                <span class="nav-tab-icon">💳</span><span class="nav-tab-text">Payments</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('analytics')">
+                <span class="nav-tab-icon">📈</span><span class="nav-tab-text">Analytics</span>
+            </button>
+            <button class="nav-tab" onclick="switchTab('settings')">
+                <span class="nav-tab-icon">⚙️</span><span class="nav-tab-text">Settings</span>
+            </button>
+        </div>
+        <div class="user-info">
+            <div class="user-name" id="currentUsername">Admin User</div>
+            <div class="user-role">Administrator</div>
+            <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
+        </div>
+    </aside>
 
-function closeConfigModal() {
-    if (DATA_SOURCES.length > 0) {
-        document.getElementById('configModal').classList.remove('active');
-    }
-}
-
-function removeDataSource(id) {
-    if (confirm('Remove this data source?')) {
-        DATA_SOURCES = DATA_SOURCES.filter(s => s.id !== id);
-        localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
-        updateDataSourcesList();
-        loadAllData();
-    }
-}
-
-function toggleDataSource(id) {
-    const source = DATA_SOURCES.find(s => s.id === id);
-    if (source) {
-        source.active = !source.active;
-        localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
-        updateDataSourcesList();
-        loadAllData();
-    }
-}
-
-function updateDataSourcesList() {
-    const list = document.getElementById('dataSourcesList');
-    if (DATA_SOURCES.length === 0) {
-        list.innerHTML = '<div style="color: var(--text-secondary); padding: 1rem; text-align: center;">No data sources connected yet.</div>';
-        return;
-    }
-    
-    list.innerHTML = DATA_SOURCES.map(s => `
-        <div class="data-source-item ${s.active ? 'active' : ''}">
-            <div>
-                <strong style="color: var(--text-primary);">${s.name}</strong>
-                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">${s.active ? '✅ Active' : '⏸️ Paused'}</div>
+    <div class="container" id="mainContainer" style="display: none;">
+        <header>
+            <div class="header-top">
+                <h1>⚡ Database Dashboard</h1>
+                <div class="sync-info">
+                    <div class="month-filter">
+                        <label style="color: var(--text-primary); font-weight: 600;">📅 Month:</label>
+                        <select id="monthFilter" onchange="applyMonthFilter()">
+                            <option value="all">All Time</option>
+                            <option value="Jan 2026">Jan 2026</option><option value="Feb 2026">Feb 2026</option>
+                            <option value="Mar 2026">Mar 2026</option><option value="Apr 2026">Apr 2026</option>
+                            <option value="May 2026">May 2026</option><option value="Jun 2026">Jun 2026</option>
+                            <option value="Jul 2026">Jul 2026</option><option value="Aug 2026">Aug 2026</option>
+                            <option value="Sep 2026">Sep 2026</option><option value="Oct 2026">Oct 2026</option>
+                            <option value="Nov 2026">Nov 2026</option><option value="Dec 2026">Dec 2026</option>
+                        </select>
+                    </div>
+                    <div class="sync-status"><span class="status-dot"></span><span id="lastSync">Last sync: Never</span></div>
+                    <button class="btn btn-primary" onclick="loadAllData()"><span>🔄</span> Refresh Data</button>
+                </div>
             </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button class="btn btn-secondary btn-small" onclick="toggleDataSource('${s.id}')">${s.active ? 'Pause' : 'Activate'}</button>
-                <button class="btn btn-secondary btn-small" onclick="removeDataSource('${s.id}')">Remove</button>
+        </header>
+
+        <div class="alert alert-info">
+            <span>ℹ️</span>
+            <div>
+                <strong>Part 1 Active!</strong> You now have: Login System • Brand Logos • Updated Status Values • New Product Status • Auto Sheet Structure.<br>
+                <em>Test everything, then request Part 2 for: Auto-Backup • Enhanced Campaigns • Enhanced Analytics • More features!</em>
             </div>
         </div>
-    `).join('');
-}
 
-function saveAppsScriptUrl() {
-    const url = document.getElementById('appsScriptUrl').value.trim();
-    if (!url) {
-        alert('Please enter the Apps Script URL');
-        return;
-    }
-    APPS_SCRIPT_URL = url;
-    localStorage.setItem('appsScriptUrl', url);
-    alert('✅ Apps Script URL saved!');
-}
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Total Creators</div><div class="stat-value" id="totalCreators">0</div></div>
+            <div class="stat-card"><div class="stat-label">Active Campaigns</div><div class="stat-value" id="activeCampaigns">0</div></div>
+            <div class="stat-card"><div class="stat-label">Total Spend</div><div class="stat-value" id="totalSpend">₹0</div></div>
+            <div class="stat-card"><div class="stat-label">Pending Payments</div><div class="stat-value" id="pendingPayments">₹0</div></div>
+            <div class="stat-card"><div class="stat-label">Avg Engagement</div><div class="stat-value" id="avgEngagement">0%</div></div>
+        </div>
 
-// ========================================
-// LOAD DATA FROM GOOGLE SHEETS
-// ========================================
-async function loadAllData() {
-    try {
-        DATA = { creators: [], campaigns: [], payments: [], analytics: [], campaignReports: [] };
-        
-        for (const source of DATA_SOURCES.filter(s => s.active)) {
-            const creatorsData = await fetchSheetData(source.apiKey, source.sheetId, 'Creators!A:R');
-            const campaignsData = await fetchSheetData(source.apiKey, source.sheetId, 'Campaigns!A:I');
-            const paymentsData = await fetchSheetData(source.apiKey, source.sheetId, 'Payments!A:G');
-            const analyticsData = await fetchSheetData(source.apiKey, source.sheetId, 'Analytics!A:H');
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="charts-grid">
+                <div class="chart-container"><canvas id="productCreatorChart"></canvas></div>
+                <div class="chart-container"><canvas id="creatorStatusChart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔒 Locked Creators</h2>
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;" id="lockedCreatorsCount">0 creators</span>
+                </div>
+                <div id="lockedCreatorsActivity"></div>
+            </div>
+        </div>
+
+        <!-- Creators Tab -->
+        <div id="creators" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Creator Database</h2>
+                </div>
+                <div class="controls">
+                    <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="creatorSearch" placeholder="Search creators..." onkeyup="filterCreators()"></div>
+                    <select id="tierFilter" onchange="filterCreators()"><option value="">All Tiers</option><option value="Tier 1">Tier 1</option><option value="Tier 2">Tier 2</option><option value="Tier 3">Tier 3</option><option value="Tier 4">Tier 4</option><option value="Tier 5">Tier 5</option></select>
+                    <select id="categoryFilter" onchange="filterCreators()"><option value="">All Categories</option></select>
+                    <select id="genderFilter" onchange="filterCreators()"><option value="">All Genders</option><option value="Male">Male</option><option value="Female">Female</option><option value="Couple">Couple</option></select>
+                    <select id="statusFilterCreators" onchange="filterCreators()">
+                        <option value="">All Status</option>
+                        <option value="Locked">🔒 Locked</option>
+                        <option value="Shipped">🚚 Shipped</option>
+                        <option value="Pending">⏳ Pending</option>
+                        <option value="Negotiation">💬 Negotiation</option>
+                        <option value="Drop">❌ Drop</option>
+                    </select>
+                </div>
+                <div class="table-container"><table><thead><tr><th>Name</th><th>Platforms</th><th>Followers</th><th>Tier</th><th>Gender</th><th>Category</th><th>Products & Status</th><th>Pricing</th><th>Contact</th></tr></thead><tbody id="creatorsTableBody"></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- Campaigns Tab -->
+        <div id="campaigns" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Campaign Management</h2></div>
+                <div class="table-container"><table><thead><tr><th>Brand</th><th>Product</th><th>Creators</th><th>Budget</th><th>Spent</th><th>Posts</th><th>Status</th></tr></thead><tbody id="campaignsTableBody"></tbody></table></div>
+            </div>
             
-            try {
-                const reportsData = await fetchSheetData(source.apiKey, source.sheetId, 'CampaignReports!A:H');
-                DATA.campaignReports.push(...parseCampaignReports(reportsData));
-            } catch (e) {
-                console.log('No CampaignReports sheet found');
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📊 Campaign Reports</h2>
+                    <button class="btn btn-primary" onclick="openUploadModal()">
+                        <span>📤</span> Upload Report
+                    </button>
+                </div>
+                
+                <div class="month-tabs" id="reportMonthTabs"></div>
+                <div id="campaignReportsContainer"></div>
+            </div>
+        </div>
+
+        <!-- Payments Tab -->
+        <div id="payments" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Payment Tracking</h2></div>
+                <div class="controls"><select id="paymentStatusFilter" onchange="filterPayments()"><option value="">All Status</option><option value="Pending">Pending</option><option value="Paid">Paid</option><option value="Overdue">Overdue</option></select></div>
+                <div class="table-container"><table><thead><tr><th>Creator</th><th>Campaign</th><th>Amount</th><th>Status</th><th>Due Date</th><th>Payment Date</th><th>Method</th></tr></thead><tbody id="paymentsTableBody"></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <div class="charts-grid">
+                <div class="chart-container"><canvas id="performanceChart"></canvas></div>
+                <div class="chart-container"><canvas id="cpmChart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Campaign Performance</h2></div>
+                <div class="table-container"><table><thead><tr><th>Campaign</th><th>Views</th><th>Spend</th><th>CPM</th><th>Creators</th></tr></thead><tbody id="analyticsTableBody"></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">⚙️ Data Source Management</h2></div>
+                <div style="background: var(--bg-elevated); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Connected Google Sheets</h3>
+                    <div id="dataSourcesList"></div>
+                    <button class="btn btn-primary" onclick="addDataSource()"><span>➕</span> Add New Sheet</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">📤 Campaign Reports Configuration</h2></div>
+                <div class="alert alert-info">
+                    <span>ℹ️</span>
+                    <div>
+                        <strong>Google Apps Script Setup Required</strong><br>
+                        To save campaign reports to Google Sheets, set up a Google Apps Script web app.
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Apps Script Web App URL</label>
+                    <input type="text" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
+                    <button class="btn btn-primary" onclick="saveAppsScriptUrl()" style="margin-top: 1rem;"><span>💾</span> Save URL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="card-title">📤 Upload Campaign Report</h2>
+                <button class="close-modal" onclick="closeUploadModal()">×</button>
+            </div>
+            
+            <div class="upload-area" id="uploadArea" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" onclick="document.getElementById('fileInput').click()">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+                <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">Drop your file here or click to browse</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Supports CSV and Excel (.xlsx) files</p>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem;">Required columns: Name, Profile Link, Post Link, Pricing, Posting Month, Contact No, Product</p>
+            </div>
+            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+            
+            <div id="uploadPreview" style="display: none; margin-top: 1.5rem;">
+                <h3 style="color: var(--text-primary); margin-bottom: 1rem;">Preview</h3>
+                <div class="table-container" style="max-height: 400px;">
+                    <table id="previewTable">
+                        <thead id="previewTableHead"></thead>
+                        <tbody id="previewTableBody"></tbody>
+                    </table>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveUploadedReport()"><span>💾</span> Save to Google Sheets</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="card-title">📊 Connect Google Sheet</h2>
+                <button class="close-modal" onclick="closeConfigModal()">×</button>
+            </div>
+            <div style="margin-bottom: 2rem;">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Sheet Name (Optional)</label>
+                    <input type="text" id="sheetNameInput" placeholder="e.g., Main Database" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">API Key</label>
+                    <input type="text" id="apiKeyInput" placeholder="Your Google Sheets API Key" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Sheet ID</label>
+                    <input type="text" id="sheetIdInput" placeholder="Your Google Sheet ID" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                </div>
+                <button class="btn btn-primary" onclick="saveConfig()" style="width: 100%;">💾 Save & Load Data</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="whatsappModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="card-title">💬 Send WhatsApp Message</h2>
+                <button class="close-modal" onclick="closeWhatsAppModal()">×</button>
+            </div>
+            <div>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">Select a message template or write your own:</p>
+                <div class="template-selector" id="templateSelector"></div>
+                <div style="margin-top: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Custom Message</label>
+                    <textarea id="customMessage" rows="4" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); resize: vertical;" placeholder="Type your custom message..."></textarea>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="closeWhatsAppModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="sendWhatsAppMessage()">
+                        <span>💬</span> Open WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // CONFIGURATION
+        // ========================================
+        const CONFIG = {
+            // Change these credentials!
+            LOGIN_CREDENTIALS: {
+                username: 'admin',
+                password: 'admin@2026'
+            },
+            SESSION_TIMEOUT: 24 * 60 * 60 * 1000 // 24 hours
+        };
+
+        // ========================================
+        // BRAND LOGO SVG ICONS
+        // ========================================
+        const PLATFORM_ICONS = {
+            instagram: '<svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="ig-gradient" cx="30%" cy="107%"><stop offset="0%" style="stop-color:#fdf497"/><stop offset="5%" style="stop-color:#fdf497"/><stop offset="45%" style="stop-color:#fd5949"/><stop offset="60%" style="stop-color:#d6249f"/><stop offset="90%" style="stop-color:#285AEB"/></radialGradient></defs><path fill="url(#ig-gradient)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>',
+            
+            facebook: '<svg viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
+            
+            youtube: '<svg viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
+            
+            whatsapp: '<svg viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>'
+        };
+
+        // Global state
+        let DATA_SOURCES = JSON.parse(localStorage.getItem('dataSources')) || [];
+        let DATA = { creators: [], campaigns: [], payments: [], analytics: [], campaignReports: [] };
+        let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || '';
+        let CURRENT_MONTH_FILTER = 'all';
+        let CURRENT_REPORT_MONTH = 'all';
+        let charts = {};
+        let uploadedFileData = null;
+        let currentWhatsAppContact = { phone: '', name: '', product: '' };
+        let currentUser = null;
+
+        // ========================================
+        // LOGIN SYSTEM
+        // ========================================
+        function checkAuth() {
+            const session = JSON.parse(localStorage.getItem('dashboardSession') || 'null');
+            if (!session) return false;
+            
+            const now = Date.now();
+            if (now - session.timestamp > CONFIG.SESSION_TIMEOUT) {
+                localStorage.removeItem('dashboardSession');
+                return false;
             }
             
-            DATA.creators.push(...parseCreators(creatorsData));
-            DATA.campaigns.push(...parseCampaigns(campaignsData));
-            DATA.payments.push(...parsePayments(paymentsData));
-            DATA.analytics.push(...parseAnalytics(analyticsData));
+            currentUser = session.user;
+            return true;
         }
-        
-        updateDashboard();
-        updateCampaignReports();
-        updateLastSync();
-    } catch (error) {
-        console.error('Error loading data:', error);
-        alert('Failed to load data. Please check your API key and Sheet ID.');
-    }
-}
 
-async function fetchSheetData(apiKey, sheetId, range) {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    return data.values || [];
-}
-
-// ========================================
-// PARSE SHEET DATA
-// ========================================
-function parseCreators(data) {
-    if (data.length <= 1) return [];
-    
-    const isOldStructure = data[0] && data[0].length >= 20;
-    
-    return data.slice(1).map(r => {
-        if (isOldStructure) {
-            return {
-                name: r[0] || '',
-                followers: parseInt(r[3]) || 0,
-                tier: r[4] || '',
-                pricing: parseInt(r[5]) || 0,
-                contact: r[6] || '',
-                category: r[7] || '',
-                avgReach: parseInt(r[8]) || 0,
-                status: r[9] || '',
-                product: r[10] || '',
-                gender: r[11] || '',
-                productStatus: r[12] || '',
-                instagramLink: r[13] || '',
-                youtubeLink: r[14] || '',
-                facebookLink: r[15] || '',
-                email: r[16] || '',
-                notes: r[18] || ''
-            };
-        } else {
-            return {
-                name: r[0] || '',
-                followers: parseInt(r[1]) || 0,
-                tier: r[2] || '',
-                pricing: parseInt(r[3]) || 0,
-                contact: r[4] || '',
-                category: r[5] || '',
-                avgReach: parseInt(r[6]) || 0,
-                status: r[7] || '',
-                product: r[8] || '',
-                gender: r[9] || '',
-                productStatus: r[10] || '',
-                instagramLink: r[11] || '',
-                youtubeLink: r[12] || '',
-                facebookLink: r[13] || '',
-                email: r[14] || '',
-                notes: r[15] || ''
-            };
-        }
-    });
-}
-
-function parseCampaigns(data) {
-    return data.length <= 1 ? [] : data.slice(1).map(r => ({
-        brand: r[0] || '',
-        product: r[1] || '',
-        creatorCount: parseInt(r[2]) || 0,
-        budget: parseInt(r[3]) || 0,
-        spent: parseInt(r[4]) || 0,
-        posts: parseInt(r[5]) || 0,
-        status: r[6] || '',
-        startDate: r[7] || '',
-        endDate: r[8] || ''
-    }));
-}
-
-function parsePayments(data) {
-    return data.length <= 1 ? [] : data.slice(1).map(r => ({
-        creator: r[0] || '',
-        campaign: r[1] || '',
-        amount: parseInt(r[2]) || 0,
-        status: r[3] || '',
-        dueDate: r[4] || '',
-        paymentDate: r[5] || '',
-        method: r[6] || ''
-    }));
-}
-
-function parseAnalytics(data) {
-    return data.length <= 1 ? [] : data.slice(1).map(r => ({
-        campaign: r[0] || '',
-        views: parseInt(r[1]) || 0,
-        impressions: parseInt(r[2]) || 0,
-        spend: parseInt(r[3]) || 0,
-        cpm: parseFloat(r[4]) || 0,
-        creators: parseInt(r[5]) || 0,
-        avgReach: parseInt(r[6]) || 0,
-        date: r[7] || ''
-    }));
-}
-
-function parseCampaignReports(data) {
-    return data.length <= 1 ? [] : data.slice(1).map(r => ({
-        uploadDate: r[0] || '',
-        name: r[1] || '',
-        profileLink: r[2] || '',
-        postLink: r[3] || '',
-        pricing: parseInt(r[4]) || 0,
-        postingMonth: r[5] || '',
-        contactNo: r[6] || '',
-        product: r[7] || ''
-    }));
-}
-
-// ========================================
-// PRODUCT STATUS HELPERS (WITH DROP + NOT ASSIGNED)
-// ========================================
-function parseProductStatus(statusString) {
-    const statuses = {};
-    if (!statusString) return statuses;
-    
-    statusString.split(',').forEach(item => {
-        const [product, status] = item.split(':');
-        if (product && status) {
-            statuses[product.trim()] = status.trim();
-        }
-    });
-    return statuses;
-}
-
-function getProductStatusBadge(status) {
-    const statusMap = {
-        'Briefed': 'product-briefed',
-        'Content Ready': 'product-content-ready',
-        'Posted': 'product-posted',
-        'Hold': 'product-hold',
-        'Drop': 'product-drop'  // NEW: Added Drop status
-    };
-    
-    // If status not recognized or empty, show "Not Assigned"
-    const className = statusMap[status] || 'product-not-assigned';
-    const displayStatus = status || 'Not Assigned';  // NEW: Smart default
-    
-    return `<span class="badge ${className}">${displayStatus}</span>`;
-}
-
-function getStatusBadge(status) {
-    const statusMap = {
-        'Locked': 'status-locked',
-        'Shipped': 'status-shipped',
-        'Pending': 'status-pending',
-        'Negotiation': 'status-negotiation',
-        'Drop': 'status-drop',
-        'Active': 'badge-success',
-        'Paid': 'badge-success',
-        'Overdue': 'badge-danger',
-        'Completed': 'badge-primary'
-    };
-    return `<span class="badge ${statusMap[status] || 'badge-secondary'}">${status}</span>`;
-}
-
-function calculateProductProgress(productStatus, products) {
-    if (!productStatus || !products) return 0;
-    
-    const productArray = products.split(',').map(p => p.trim());
-    const statusObj = parseProductStatus(productStatus);
-    
-    const completedStatuses = ['Posted'];
-    const completed = productArray.filter(p => 
-        completedStatuses.includes(statusObj[p])
-    ).length;
-    
-    return productArray.length > 0 ? (completed / productArray.length) * 100 : 0;
-}
-
-// ========================================
-// PLATFORM ICON HELPER (FIXED FOR INSTAGRAM)
-// ========================================
-function getPlatformIcon(platform) {
-    const plat = (platform || '').toLowerCase();
-    return PLATFORM_ICONS[plat] || '';
-}
-
-// ========================================
-// UPDATE DASHBOARD (WITH FIXED CALCULATIONS)
-// ========================================
-function updateDashboard() {
-    const selectedMonth = document.getElementById('monthFilter').value;
-    
-    let filteredCreators = DATA.creators;
-    let filteredPayments = DATA.payments;
-    
-    // Apply month filter if needed (you can enhance this)
-    if (selectedMonth !== 'all') {
-        // Add month filtering logic based on your data structure
-    }
-    
-    // 1. TOTAL CREATORS
-    document.getElementById('totalCreators').textContent = filteredCreators.length;
-    document.getElementById('totalCreatorsDetail').textContent = 'All creators in database';
-    
-    // 2. POST COUNT
-    const postCountByProduct = {};
-    filteredCreators.forEach(creator => {
-        if (creator.productStatus && creator.product) {
-            const statuses = parseProductStatus(creator.productStatus);
-            const products = creator.product.split(',').map(p => p.trim());
+        function handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('loginError');
             
-            products.forEach(product => {
-                if (statuses[product] === 'Posted') {
-                    postCountByProduct[product] = (postCountByProduct[product] || 0) + 1;
+            if (username === CONFIG.LOGIN_CREDENTIALS.username && password === CONFIG.LOGIN_CREDENTIALS.password) {
+                const session = {
+                    user: username,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('dashboardSession', JSON.stringify(session));
+                currentUser = username;
+                
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'block';
+                document.getElementById('currentUsername').textContent = username;
+                
+                if (DATA_SOURCES.length === 0) {
+                    document.getElementById('configModal').classList.add('active');
+                } else {
+                    loadAllData();
+                }
+            } else {
+                errorEl.textContent = '❌ Invalid username or password';
+                errorEl.style.display = 'block';
+                setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
+            }
+        }
+
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('dashboardSession');
+                window.location.reload();
+            }
+        }
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            if (checkAuth()) {
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'block';
+                document.getElementById('currentUsername').textContent = currentUser;
+                
+                if (DATA_SOURCES.length === 0) {
+                    document.getElementById('configModal').classList.add('active');
+                } else {
+                    loadAllData();
+                }
+            }
+            
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                document.getElementById('sidebar').classList.add('collapsed');
+                document.getElementById('mainContainer').classList.add('sidebar-collapsed');
+            }
+            
+            if (APPS_SCRIPT_URL) {
+                document.getElementById('appsScriptUrl').value = APPS_SCRIPT_URL;
+            }
+        });
+
+        // Sidebar functions
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const container = document.getElementById('mainContainer');
+            sidebar.classList.toggle('collapsed');
+            container.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+
+        function toggleMobileSidebar() {
+            document.getElementById('sidebar').classList.toggle('mobile-open');
+        }
+
+        // ========================================
+        // DATA SOURCE MANAGEMENT
+        // ========================================
+        function addDataSource() {
+            document.getElementById('sheetNameInput').value = '';
+            document.getElementById('apiKeyInput').value = '';
+            document.getElementById('sheetIdInput').value = '';
+            document.getElementById('configModal').classList.add('active');
+        }
+
+        function saveConfig() {
+            const name = document.getElementById('sheetNameInput').value.trim() || 'Sheet ' + (DATA_SOURCES.length + 1);
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const sheetId = document.getElementById('sheetIdInput').value.trim();
+
+            if (!apiKey || !sheetId) {
+                alert('Please enter both API Key and Sheet ID');
+                return;
+            }
+
+            const source = { id: Date.now().toString(), name, apiKey, sheetId, active: true };
+            DATA_SOURCES.push(source);
+            localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+            
+            closeConfigModal();
+            updateDataSourcesList();
+            loadAllData();
+        }
+
+        function closeConfigModal() {
+            if (DATA_SOURCES.length > 0) {
+                document.getElementById('configModal').classList.remove('active');
+            }
+        }
+
+        function removeDataSource(id) {
+            if (confirm('Remove this data source?')) {
+                DATA_SOURCES = DATA_SOURCES.filter(s => s.id !== id);
+                localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+                updateDataSourcesList();
+                loadAllData();
+            }
+        }
+
+        function toggleDataSource(id) {
+            const source = DATA_SOURCES.find(s => s.id === id);
+            if (source) {
+                source.active = !source.active;
+                localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+                updateDataSourcesList();
+                loadAllData();
+            }
+        }
+
+        function updateDataSourcesList() {
+            const list = document.getElementById('dataSourcesList');
+            if (DATA_SOURCES.length === 0) {
+                list.innerHTML = '<div style="color: var(--text-secondary); padding: 1rem; text-align: center;">No data sources connected yet.</div>';
+                return;
+            }
+            
+            list.innerHTML = DATA_SOURCES.map(s => `
+                <div class="data-source-item ${s.active ? 'active' : ''}">
+                    <div>
+                        <strong style="color: var(--text-primary);">${s.name}</strong>
+                        <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">${s.active ? '✅ Active' : '⏸️ Paused'}</div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary btn-small" onclick="toggleDataSource('${s.id}')">${s.active ? 'Pause' : 'Activate'}</button>
+                        <button class="btn btn-secondary btn-small" onclick="removeDataSource('${s.id}')">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveAppsScriptUrl() {
+            const url = document.getElementById('appsScriptUrl').value.trim();
+            if (!url) {
+                alert('Please enter the Apps Script URL');
+                return;
+            }
+            APPS_SCRIPT_URL = url;
+            localStorage.setItem('appsScriptUrl', url);
+            alert('✅ Apps Script URL saved!');
+        }
+
+        // ========================================
+        // LOAD DATA FROM GOOGLE SHEETS
+        // ========================================
+        async function loadAllData() {
+            try {
+                DATA = { creators: [], campaigns: [], payments: [], analytics: [], campaignReports: [] };
+                
+                for (const source of DATA_SOURCES.filter(s => s.active)) {
+                    // Auto-detect structure (old 20 cols or new 18 cols)
+                    const creatorsData = await fetchSheetData(source.apiKey, source.sheetId, 'Creators!A:R');
+                    const campaignsData = await fetchSheetData(source.apiKey, source.sheetId, 'Campaigns!A:I');
+                    const paymentsData = await fetchSheetData(source.apiKey, source.sheetId, 'Payments!A:G');
+                    const analyticsData = await fetchSheetData(source.apiKey, source.sheetId, 'Analytics!A:H');
+                    
+                    try {
+                        const reportsData = await fetchSheetData(source.apiKey, source.sheetId, 'CampaignReports!A:H');
+                        DATA.campaignReports.push(...parseCampaignReports(reportsData));
+                    } catch (e) {
+                        console.log('No CampaignReports sheet found');
+                    }
+                    
+                    DATA.creators.push(...parseCreators(creatorsData));
+                    DATA.campaigns.push(...parseCampaigns(campaignsData));
+                    DATA.payments.push(...parsePayments(paymentsData));
+                    DATA.analytics.push(...parseAnalytics(analyticsData));
+                }
+                
+                updateDashboard();
+                updateCampaignReports();
+                updateLastSync();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Failed to load data. Please check your API key and Sheet ID.');
+            }
+        }
+
+        async function fetchSheetData(apiKey, sheetId, range) {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.values || [];
+        }
+
+        // ========================================
+        // PARSE SHEET DATA (AUTO-DETECT OLD/NEW)
+        // ========================================
+        function parseCreators(data) {
+            if (data.length <= 1) return [];
+            
+            // Auto-detect structure based on column count
+            const isOldStructure = data[0] && data[0].length >= 20;
+            
+            return data.slice(1).map(r => {
+                if (isOldStructure) {
+                    // Old structure (20 columns A-T)
+                    return {
+                        name: r[0] || '',
+                        followers: parseInt(r[3]) || 0,
+                        tier: r[4] || '',
+                        pricing: parseInt(r[5]) || 0,
+                        contact: r[6] || '',
+                        category: r[7] || '',
+                        avgReach: parseInt(r[8]) || 0,
+                        status: r[9] || '',
+                        product: r[10] || '',
+                        gender: r[11] || '',
+                        productStatus: r[12] || '',
+                        instagramLink: r[13] || '',
+                        youtubeLink: r[14] || '',
+                        facebookLink: r[15] || '',
+                        email: r[16] || '',
+                        notes: r[18] || ''
+                    };
+                } else {
+                    // New structure (18 columns A-R)
+                    return {
+                        name: r[0] || '',
+                        followers: parseInt(r[1]) || 0,
+                        tier: r[2] || '',
+                        pricing: parseInt(r[3]) || 0,
+                        contact: r[4] || '',
+                        category: r[5] || '',
+                        avgReach: parseInt(r[6]) || 0,
+                        status: r[7] || '',
+                        product: r[8] || '',
+                        gender: r[9] || '',
+                        productStatus: r[10] || '',
+                        instagramLink: r[11] || '',
+                        youtubeLink: r[12] || '',
+                        facebookLink: r[13] || '',
+                        email: r[14] || '',
+                        notes: r[15] || ''
+                    };
                 }
             });
         }
-    });
-    
-    const totalPosted = Object.values(postCountByProduct).reduce((sum, count) => sum + count, 0);
-    document.getElementById('postCount').textContent = totalPosted;
-    
-    const productBreakdown = Object.entries(postCountByProduct)
-        .map(([product, count]) => `${product}: ${count}`)
-        .join(', ') || 'No posts yet';
-    document.getElementById('postCountDetail').textContent = productBreakdown;
-    
-    // 3. PENDING CREATORS
-    const pendingCreators = filteredCreators.filter(creator => {
-        if (!creator.productStatus || !creator.product) return true;
-        
-        const statuses = parseProductStatus(creator.productStatus);
-        const products = creator.product.split(',').map(p => p.trim());
-        
-        return products.some(product => statuses[product] !== 'Posted');
-    });
-    
-    document.getElementById('pendingCreators').textContent = pendingCreators.length;
-    
-    // 4. TOTAL SPEND - FROM PAYMENTS SHEET (FIX #1)
-    const paidPayments = filteredPayments.filter(p => p.status === 'Paid');
-    const totalSpend = paidPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    
-    document.getElementById('totalSpend').textContent = `₹${totalSpend.toLocaleString()}`;
-    document.getElementById('totalSpendDetail').textContent = `${paidPayments.length} payments made`;
-    
-    // 5. CPM - FROM ANALYTICS SHEET (FIX #2)
-    const cpmValues = DATA.analytics
-        .map(a => parseFloat(a.cpm) || 0)
-        .filter(cpm => cpm > 0);
-    
-    const avgCPM = cpmValues.length > 0 
-        ? cpmValues.reduce((sum, val) => sum + val, 0) / cpmValues.length 
-        : 0;
-    
-    document.getElementById('cpmValue').textContent = `₹${avgCPM.toFixed(2)}`;
-    
-    // Update other components
-    updateCreatorsTable();
-    updateCampaignsTable();
-    updatePaymentsTable();
-    updateAnalyticsTable();
-    updateCharts();
-    updateLockedCreatorsActivity();
-    updateDataSourcesList();
-}
 
-// Continue with remaining functions in next part...
+        function parseCampaigns(data) {
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                brand: r[0] || '',
+                product: r[1] || '',
+                creatorCount: parseInt(r[2]) || 0,
+                budget: parseInt(r[3]) || 0,
+                spent: parseInt(r[4]) || 0,
+                posts: parseInt(r[5]) || 0,
+                status: r[6] || '',
+                startDate: r[7] || '',
+                endDate: r[8] || ''
+            }));
+        }
+
+        function parsePayments(data) {
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                creator: r[0] || '',
+                campaign: r[1] || '',
+                amount: parseInt(r[2]) || 0,
+                status: r[3] || '',
+                dueDate: r[4] || '',
+                paymentDate: r[5] || '',
+                method: r[6] || ''
+            }));
+        }
+
+        function parseAnalytics(data) {
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                campaign: r[0] || '',
+                views: parseInt(r[1]) || 0,
+                impressions: parseInt(r[2]) || 0,
+                spend: parseInt(r[3]) || 0,
+                cpm: parseFloat(r[4]) || 0,
+                creators: parseInt(r[5]) || 0,
+                avgReach: parseInt(r[6]) || 0,
+                date: r[7] || ''
+            }));
+        }
+
+        function parseCampaignReports(data) {
+            return data.length <= 1 ? [] : data.slice(1).map(r => ({
+                uploadDate: r[0] || '',
+                name: r[1] || '',
+                profileLink: r[2] || '',
+                postLink: r[3] || '',
+                pricing: parseInt(r[4]) || 0,
+                postingMonth: r[5] || '',
+                contactNo: r[6] || '',
+                product: r[7] || ''
+            }));
+        }
+
+        // ========================================
+        // STATUS & PRODUCT STATUS HELPERS
+        // ========================================
+        function parseProductStatus(statusString) {
+            const statuses = {};
+            if (!statusString) return statuses;
+            
+            statusString.split(',').forEach(item => {
+                const [product, status] = item.split(':');
+                if (product && status) {
+                    statuses[product.trim()] = status.trim();
+                }
+            });
+            return statuses;
+        }
+
+        function getProductStatusBadge(status) {
+            const statusMap = {
+                'Briefed': 'product-briefed',
+                'Content Ready': 'product-content-ready',
+                'Posted': 'product-posted',
+                'Hold': 'product-hold',
+                'Drop': 'product-drop'  // NEW: Added Drop status
+            };
+            
+            // If status not recognized or empty, show "Not Assigned"
+            const className = statusMap[status] || 'product-not-assigned';
+            const displayStatus = status || 'Not Assigned';  // NEW: Smart default
+            
+            return `<span class="badge ${className}">${displayStatus}</span>`;
+        }
+
+        function getStatusBadge(status) {
+            const statusMap = {
+                'Locked': 'status-locked',
+                'Shipped': 'status-shipped',
+                'Pending': 'status-pending',
+                'Negotiation': 'status-negotiation',
+                'Drop': 'status-drop',
+                'Active': 'badge-success',
+                'Paid': 'badge-success',
+                'Overdue': 'badge-danger',
+                'Completed': 'badge-primary'
+            };
+            return `<span class="badge ${statusMap[status] || 'badge-secondary'}">${status}</span>`;
+        }
+
+        function calculateProductProgress(productStatus, products) {
+            if (!productStatus || !products) return 0;
+            
+            const productArray = products.split(',').map(p => p.trim());
+            const statusObj = parseProductStatus(productStatus);
+            
+            const completedStatuses = ['Posted'];
+            const completed = productArray.filter(p => 
+                completedStatuses.includes(statusObj[p])
+            ).length;
+            
+            return productArray.length > 0 ? (completed / productArray.length) * 100 : 0;
+        }
+
+        // ========================================
+        // PLATFORM ICON HELPERS
+        // ========================================
+        function getPlatformIcon(platform) {
+            return PLATFORM_ICONS[platform.toLowerCase()] || '';
+        }
+
+        // Due to size, continuing in separate message with rest of JavaScript...
+        
+        // ========================================
+        // UPDATE DASHBOARD
+        // ========================================
+        function updateDashboard() {
+            document.getElementById('totalCreators').textContent = DATA.creators.length;
+            document.getElementById('activeCampaigns').textContent = DATA.campaigns.filter(c => c.status === 'Active').length;
+            
+            const totalSpend = DATA.payments.filter(p => p.status === 'Paid').reduce((s, p) => s + p.amount, 0);
+            document.getElementById('totalSpend').textContent = `₹${totalSpend.toLocaleString()}`;
+            
+            const pendingAmount = DATA.payments.filter(p => p.status === 'Pending').reduce((s, p) => s + p.amount, 0);
+            document.getElementById('pendingPayments').textContent = `₹${pendingAmount.toLocaleString()}`;
+            
+            const avgEng = DATA.analytics.length > 0 ? '3.5' : '0';
+            document.getElementById('avgEngagement').textContent = avgEng + '%';
+            
+            updateCreatorsTable();
+            updateCampaignsTable();
+            updatePaymentsTable();
+            updateAnalyticsTable();
+            updateCharts();
+            updateLockedCreatorsActivity();
+            updateDataSourcesList();
+        }
+
+        // Update locked creators with brand logos
+        function updateLockedCreatorsActivity() {
+            const lc = DATA.creators.filter(c => c.status === 'Locked');
+            const container = document.getElementById('lockedCreatorsActivity');
+            const countEl = document.getElementById('lockedCreatorsCount');
+            
+            if (countEl) {
+                countEl.textContent = `${lc.length} creator${lc.length !== 1 ? 's' : ''}`;
+            }
+            
+            if (lc.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">No locked creators yet</div>';
+                return;
+            }
+            
+            const grouped = {};
+            lc.forEach(creator => {
+                if (!grouped[creator.name]) {
+                    grouped[creator.name] = creator;
+                }
+            });
+            
+            container.innerHTML = Object.values(grouped).map((creator, index) => {
+                const productStatuses = parseProductStatus(creator.productStatus);
+                const products = creator.product ? creator.product.split(',').map(p => p.trim()) : [];
+                const progress = calculateProductProgress(creator.productStatus, creator.product);
+                
+                const platforms = [];
+                if (creator.instagramLink) platforms.push({ name: 'Instagram', icon: PLATFORM_ICONS.instagram, link: creator.instagramLink });
+                if (creator.youtubeLink) platforms.push({ name: 'YouTube', icon: PLATFORM_ICONS.youtube, link: creator.youtubeLink });
+                if (creator.facebookLink) platforms.push({ name: 'Facebook', icon: PLATFORM_ICONS.facebook, link: creator.facebookLink });
+                
+                return `
+                    <div class="locked-creator-item">
+                        <div class="locked-creator-header">
+                            <div>
+                                <div class="locked-creator-name">${creator.name}</div>
+                                <div class="locked-creator-meta">
+                                    <span>💰 ₹${creator.pricing.toLocaleString()}</span>
+                                    <span>📂 ${creator.category}</span>
+                                    <span>👤 ${creator.gender || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <div class="locked-creator-actions">
+                                ${creator.contact ? `<button class="link-icon" onclick="openWhatsApp('${creator.contact.replace(/'/g, "\\'")}', '${creator.name.replace(/'/g, "\\'")}', '${(products[0] || 'product').replace(/'/g, "\\'")}');" title="WhatsApp">${PLATFORM_ICONS.whatsapp}</button>` : ''}
+                            </div>
+                        </div>
+                        
+                        ${platforms.length > 0 ? `
+                            <div class="locked-creator-platforms">
+                                ${platforms.map(p => `
+                                    <a href="${p.link}" target="_blank" class="platform-badge" title="${p.name}">
+                                        ${p.icon} ${p.name}
+                                    </a>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${products.length > 0 ? `
+                            <div class="locked-creator-products">
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: 600;">Products & Status:</div>
+                                ${products.map(product => `
+                                    <div class="product-status-item">
+                                        <span class="product-status-name">🎯 ${product}</span>
+                                        ${getProductStatusBadge(productStatuses[product] || 'Briefed')}
+                                    </div>
+                                `).join('')}
+                                <div style="margin-top: 0.5rem;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
+                                        <span>Progress</span>
+                                        <span>${Math.round(progress)}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${progress}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="locked-creator-contact">
+                            ${creator.contact ? `<div style="color: var(--text-secondary); font-size: 0.9rem;">📞 ${creator.contact}</div>` : ''}
+                            ${creator.email ? `<div style="color: var(--text-secondary); font-size: 0.9rem;">📧 ${creator.email}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update creators table with brand logos
+        function updateCreatorsTable() {
+            const tbody = document.getElementById('creatorsTableBody');
+            
+            tbody.innerHTML = DATA.creators.map((c, index) => {
+                const productStatuses = parseProductStatus(c.productStatus);
+                const products = c.product ? c.product.split(',').map(p => p.trim()) : [];
+                
+                const platforms = [];
+                if (c.instagramLink) platforms.push({ icon: PLATFORM_ICONS.instagram, link: c.instagramLink, name: 'Instagram' });
+                if (c.youtubeLink) platforms.push({ icon: PLATFORM_ICONS.youtube, link: c.youtubeLink, name: 'YouTube' });
+                if (c.facebookLink) platforms.push({ icon: PLATFORM_ICONS.facebook, link: c.facebookLink, name: 'Facebook' });
+                
+                return `
+                    <tr>
+                        <td><strong style="color: var(--text-primary);">${c.name}</strong></td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                ${platforms.map(p => `<a href="${p.link}" target="_blank" class="link-icon" title="${p.name}">${p.icon}</a>`).join('')}
+                                ${platforms.length === 0 ? '<span style="color: var(--text-secondary);">-</span>' : ''}
+                            </div>
+                        </td>
+                        <td>${formatNumber(c.followers)}</td>
+                        <td><span class="${getTierClass(c.tier)}">${c.tier}</span></td>
+                        <td>${c.gender || '-'}</td>
+                        <td>${c.category}</td>
+                        <td>
+                            ${products.length > 0 ? `
+                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                    ${products.map(p => `
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <span style="font-size: 0.85rem;">${p}</span>
+                                            ${getProductStatusBadge(productStatuses[p] || 'Briefed')}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '-'}
+                        </td>
+                        <td><strong style="color: var(--success);">₹${c.pricing.toLocaleString()}</strong></td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">${c.contact}</span>
+                                ${c.contact ? `<button class="link-icon" onclick="openWhatsApp('${c.contact.replace(/'/g, "\\'")}', '${c.name.replace(/'/g, "\\'")}', '${(products[0] || 'product').replace(/'/g, "\\'")}');" title="WhatsApp">${PLATFORM_ICONS.whatsapp}</button>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            const cats = [...new Set(DATA.creators.map(c => c.category))].filter(Boolean);
+            document.getElementById('categoryFilter').innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function updateCampaignsTable() {
+            document.getElementById('campaignsTableBody').innerHTML = DATA.campaigns.map(c => {
+                const p = c.budget > 0 ? ((c.spent / c.budget) * 100).toFixed(1) : 0;
+                return `<tr>
+                    <td><strong style="color: var(--text-primary);">${c.brand}</strong></td>
+                    <td>${c.product}</td>
+                    <td>${c.creatorCount}</td>
+                    <td>₹${c.budget.toLocaleString()}</td>
+                    <td>₹${c.spent.toLocaleString()} <span style="font-size: 0.8rem; color: var(--text-secondary);">(${p}%)</span></td>
+                    <td>${c.posts}</td>
+                    <td>${getStatusBadge(c.status)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updatePaymentsTable() {
+            document.getElementById('paymentsTableBody').innerHTML = DATA.payments.map(p => `
+                <tr>
+                    <td><strong style="color: var(--text-primary);">${p.creator}</strong></td>
+                    <td>${p.campaign}</td>
+                    <td><strong style="color: var(--success);">₹${p.amount.toLocaleString()}</strong></td>
+                    <td>${getStatusBadge(p.status)}</td>
+                    <td>${p.dueDate}</td>
+                    <td>${p.paymentDate || '-'}</td>
+                    <td>${p.method || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateAnalyticsTable() {
+            document.getElementById('analyticsTableBody').innerHTML = DATA.analytics.map(i => `
+                <tr>
+                    <td><strong style="color: var(--text-primary);">${i.campaign}</strong></td>
+                    <td>${formatNumber(i.views)}</td>
+                    <td>₹${i.spend.toLocaleString()}</td>
+                    <td>₹${i.cpm.toFixed(2)}</td>
+                    <td>${i.creators}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateCharts() {
+            const pcm = {}; 
+            DATA.campaigns.forEach(c => { if (c.status === 'Active') pcm[c.product] = (pcm[c.product] || 0) + c.creatorCount; });
+            if (charts.productCreator) charts.productCreator.destroy();
+            charts.productCreator = new Chart(document.getElementById('productCreatorChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(pcm), datasets: [{ label: 'Active Creators', data: Object.values(pcm), backgroundColor: '#6366f1' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Active Creators by Product', color: '#e2e8f0' }, legend: { labels: { color: '#e2e8f0' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } } } }
+            });
+
+            const sc = {}; 
+            DATA.creators.forEach(c => sc[c.status] = (sc[c.status] || 0) + 1);
+            if (charts.creatorStatus) charts.creatorStatus.destroy();
+            charts.creatorStatus = new Chart(document.getElementById('creatorStatusChart'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(sc), datasets: [{ data: Object.values(sc), backgroundColor: ['#8b5cf6', '#06b6d4', '#f59e0b', '#ec4899', '#ef4444', '#10b981'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Creator Status Distribution', color: '#e2e8f0' }, legend: { labels: { color: '#e2e8f0' } } } }
+            });
+
+            if (charts.performance) charts.performance.destroy();
+            charts.performance = new Chart(document.getElementById('performanceChart'), {
+                type: 'line',
+                data: { labels: DATA.analytics.map(a => a.campaign), datasets: [{ label: 'Views', data: DATA.analytics.map(a => a.views), borderColor: '#6366f1', tension: 0.4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Campaign Views', color: '#e2e8f0' }, legend: { labels: { color: '#e2e8f0' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } } } }
+            });
+
+            if (charts.cpm) charts.cpm.destroy();
+            charts.cpm = new Chart(document.getElementById('cpmChart'), {
+                type: 'bar',
+                data: { labels: DATA.analytics.map(a => a.campaign), datasets: [{ label: 'CPM (₹)', data: DATA.analytics.map(a => a.cpm), backgroundColor: '#10b981' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'CPM by Campaign', color: '#e2e8f0' }, legend: { labels: { color: '#e2e8f0' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d2d44' } } } }
+            });
+        }
+
+        // ========================================
+        // WHATSAPP INTEGRATION
+        // ========================================
+        function openWhatsApp(phone, name, product) {
+            currentWhatsAppContact = { phone, name, product };
+            
+            const templates = [
+                { title: 'Brief Template', preview: `Hi ${name}! Regarding ${product} collaboration - we'd like to discuss the campaign brief. Are you available for a quick call?` },
+                { title: 'Follow-up Template', preview: `Hi ${name}! Following up on ${product} content. How's it coming along? Let me know if you need any support!` },
+                { title: 'Payment Update', preview: `Hi ${name}! Your payment for ${product} campaign has been processed. Please confirm receipt. Thank you!` },
+                { title: 'Content Approval', preview: `Hi ${name}! We've reviewed your ${product} content and it looks great! Approved for posting. Thank you!` }
+            ];
+            
+            document.getElementById('templateSelector').innerHTML = templates.map((t, i) => `
+                <div class="template-option" onclick="selectTemplate(${i})">
+                    <div class="template-title">${t.title}</div>
+                    <div class="template-preview">${t.preview}</div>
+                </div>
+            `).join('');
+            
+            document.getElementById('customMessage').value = '';
+            document.getElementById('whatsappModal').classList.add('active');
+        }
+
+        function selectTemplate(index) {
+            const templates = [
+                `Hi ${currentWhatsAppContact.name}! Regarding ${currentWhatsAppContact.product} collaboration - we'd like to discuss the campaign brief. Are you available for a quick call?`,
+                `Hi ${currentWhatsAppContact.name}! Following up on ${currentWhatsAppContact.product} content. How's it coming along? Let me know if you need any support!`,
+                `Hi ${currentWhatsAppContact.name}! Your payment for ${currentWhatsAppContact.product} campaign has been processed. Please confirm receipt. Thank you!`,
+                `Hi ${currentWhatsAppContact.name}! We've reviewed your ${currentWhatsAppContact.product} content and it looks great! Approved for posting. Thank you!`
+            ];
+            
+            document.getElementById('customMessage').value = templates[index];
+        }
+
+        function closeWhatsAppModal() {
+            document.getElementById('whatsappModal').classList.remove('active');
+        }
+
+        function sendWhatsAppMessage() {
+            const message = document.getElementById('customMessage').value.trim();
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            const phone = currentWhatsAppContact.phone.replace(/[^0-9]/g, '');
+            const encodedMessage = encodeURIComponent(message);
+            const url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
+            
+            window.open(url, 'whatsapp', 'width=800,height=600');
+            closeWhatsAppModal();
+        }
+
+        // ========================================
+        // CAMPAIGN REPORTS
+        // ========================================
+        function openUploadModal() {
+            if (!APPS_SCRIPT_URL) {
+                alert('⚠️ Please configure Apps Script URL in Settings first!');
+                switchTab('settings');
+                return;
+            }
+            document.getElementById('uploadModal').classList.add('active');
+            document.getElementById('uploadPreview').style.display = 'none';
+            uploadedFileData = null;
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+            document.getElementById('fileInput').value = '';
+            uploadedFileData = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) processFile(files[0]);
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) processFile(files[0]);
+        }
+
+        function processFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                
+                if (jsonData.length > 0) {
+                    uploadedFileData = jsonData;
+                    showPreview(jsonData);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function showPreview(data) {
+            const headers = data[0];
+            const rows = data.slice(1);
+            
+            document.getElementById('previewTableHead').innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+            document.getElementById('previewTableBody').innerHTML = rows.slice(0, 10).map(row => `<tr>${row.map(cell => `<td>${cell || ''}</td>`).join('')}</tr>`).join('');
+            
+            document.getElementById('uploadPreview').style.display = 'block';
+        }
+
+        async function saveUploadedReport() {
+            if (!uploadedFileData || !APPS_SCRIPT_URL) return;
+
+            const headers = uploadedFileData[0];
+            const rows = uploadedFileData.slice(1);
+            
+            const reportData = rows.map(row => {
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = row[index] || '';
+                });
+                return [
+                    new Date().toLocaleString('en-IN'),
+                    obj['Name'] || obj['name'] || '',
+                    obj['Profile Link'] || obj['profile_link'] || '',
+                    obj['Post Link'] || obj['post_link'] || '',
+                    obj['Pricing'] || obj['pricing'] || '',
+                    obj['Posting Month'] || obj['Month'] || '',
+                    obj['Contact No'] || obj['contact'] || '',
+                    obj['Product'] || obj['product'] || ''
+                ];
+            });
+
+            try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: reportData })
+                });
+
+                alert('✅ Report uploaded successfully to Google Sheets!');
+                closeUploadModal();
+                setTimeout(() => loadAllData(), 2000);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('⚠️ Error uploading. Check console.');
+            }
+        }
+
+        function updateCampaignReports() {
+            const months = [...new Set(DATA.campaignReports.map(r => r.postingMonth).filter(Boolean))].sort();
+            
+            const tabsContainer = document.getElementById('reportMonthTabs');
+            tabsContainer.innerHTML = `
+                <div class="month-tab ${CURRENT_REPORT_MONTH === 'all' ? 'active' : ''}" onclick="filterReportsByMonth('all')">All Months</div>
+                ${months.map(m => `<div class="month-tab ${CURRENT_REPORT_MONTH === m ? 'active' : ''}" onclick="filterReportsByMonth('${m}')">${m}</div>`).join('')}
+            `;
+            
+            const container = document.getElementById('campaignReportsContainer');
+            const filteredReports = CURRENT_REPORT_MONTH === 'all' 
+                ? DATA.campaignReports 
+                : DATA.campaignReports.filter(r => r.postingMonth === CURRENT_REPORT_MONTH);
+            
+            if (filteredReports.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-secondary);">No reports uploaded yet.</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Upload Date</th><th>Name</th><th>Profile</th><th>Post</th><th>Pricing</th><th>Month</th><th>Contact</th><th>Product</th></tr></thead>
+                        <tbody>${filteredReports.map(r => `
+                            <tr>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">${r.uploadDate}</td>
+                                <td><strong style="color: var(--text-primary);">${r.name}</strong></td>
+                                <td>${r.profileLink ? `<a href="${r.profileLink}" target="_blank" class="link-icon">🔗</a>` : '-'}</td>
+                                <td>${r.postLink ? `<a href="${r.postLink}" target="_blank" class="btn btn-secondary btn-small">View Post</a>` : '-'}</td>
+                                <td><strong style="color: var(--success);">₹${(r.pricing || 0).toLocaleString()}</strong></td>
+                                <td>${r.postingMonth}</td>
+                                <td style="font-family: 'JetBrains Mono', monospace;">${r.contactNo}</td>
+                                <td>${r.product}</td>
+                            </tr>
+                        `).join('')}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function filterReportsByMonth(month) {
+            CURRENT_REPORT_MONTH = month;
+            updateCampaignReports();
+        }
+
+        // ========================================
+        // FILTER FUNCTIONS
+        // ========================================
+        function filterCreators() {
+            const s = document.getElementById('creatorSearch').value.toLowerCase();
+            const tf = document.getElementById('tierFilter').value;
+            const cf = document.getElementById('categoryFilter').value;
+            const gf = document.getElementById('genderFilter').value;
+            const sf = document.getElementById('statusFilterCreators').value;
+            
+            const filtered = DATA.creators.filter(c => 
+                (c.name.toLowerCase().includes(s) || c.category.toLowerCase().includes(s)) &&
+                (!tf || c.tier === tf) && (!cf || c.category === cf) &&
+                (!gf || c.gender === gf) && (!sf || c.status === sf)
+            );
+            
+            const tbody = document.getElementById('creatorsTableBody');
+            tbody.innerHTML = filtered.map((c, index) => {
+                const productStatuses = parseProductStatus(c.productStatus);
+                const products = c.product ? c.product.split(',').map(p => p.trim()) : [];
+                const platforms = [];
+                if (c.instagramLink) platforms.push({ icon: PLATFORM_ICONS.instagram, link: c.instagramLink, name: 'Instagram' });
+                if (c.youtubeLink) platforms.push({ icon: PLATFORM_ICONS.youtube, link: c.youtubeLink, name: 'YouTube' });
+                if (c.facebookLink) platforms.push({ icon: PLATFORM_ICONS.facebook, link: c.facebookLink, name: 'Facebook' });
+                
+                return `
+                    <tr>
+                        <td><strong style="color: var(--text-primary);">${c.name}</strong></td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                ${platforms.map(p => `<a href="${p.link}" target="_blank" class="link-icon" title="${p.name}">${p.icon}</a>`).join('')}
+                                ${platforms.length === 0 ? '<span style="color: var(--text-secondary);">-</span>' : ''}
+                            </div>
+                        </td>
+                        <td>${formatNumber(c.followers)}</td>
+                        <td><span class="${getTierClass(c.tier)}">${c.tier}</span></td>
+                        <td>${c.gender || '-'}</td>
+                        <td>${c.category}</td>
+                        <td>
+                            ${products.length > 0 ? `
+                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                    ${products.map(p => `
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <span style="font-size: 0.85rem;">${p}</span>
+                                            ${getProductStatusBadge(productStatuses[p] || 'Briefed')}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '-'}
+                        </td>
+                        <td><strong style="color: var(--success);">₹${c.pricing.toLocaleString()}</strong></td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">${c.contact}</span>
+                                ${c.contact ? `<button class="link-icon" onclick="openWhatsApp('${c.contact.replace(/'/g, "\\'")}', '${c.name.replace(/'/g, "\\'")}', '${(products[0] || 'product').replace(/'/g, "\\'")}');" title="WhatsApp">${PLATFORM_ICONS.whatsapp}</button>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterPayments() {
+            const s = document.getElementById('paymentStatusFilter').value;
+            const f = !s ? DATA.payments : DATA.payments.filter(p => p.status === s);
+            document.getElementById('paymentsTableBody').innerHTML = f.map(p => `
+                <tr>
+                    <td><strong style="color: var(--text-primary);">${p.creator}</strong></td>
+                    <td>${p.campaign}</td>
+                    <td><strong style="color: var(--success);">₹${p.amount.toLocaleString()}</strong></td>
+                    <td>${getStatusBadge(p.status)}</td>
+                    <td>${p.dueDate}</td>
+                    <td>${p.paymentDate || '-'}</td>
+                    <td>${p.method || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function switchTab(t) {
+            if (window.innerWidth <= 768) toggleMobileSidebar();
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(nt => nt.classList.remove('active'));
+            document.getElementById(t).classList.add('active');
+            document.querySelector(`[onclick*="switchTab('${t}')"]`).classList.add('active');
+        }
+
+        function applyMonthFilter() { CURRENT_MONTH_FILTER = document.getElementById('monthFilter').value; }
+        function getTierClass(t) { return { 'Tier 1': 'tier-1', 'Tier 2': 'tier-2', 'Tier 3': 'tier-3', 'Tier 4': 'tier-4', 'Tier 5': 'tier-5' }[t] || ''; }
+        function formatNumber(n) { return n >= 1000000 ? (n / 1000000).toFixed(1) + 'M' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : n.toString(); }
+        function updateLastSync() { document.getElementById('lastSync').textContent = `Last sync: ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`; }
+        
+        setInterval(() => { if (DATA_SOURCES.filter(s => s.active).length > 0) loadAllData(); }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
