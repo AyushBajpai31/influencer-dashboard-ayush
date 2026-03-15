@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Dashboard - Part 1 Fixed</title>
+    <title>IM DASHBOARD</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -236,13 +236,11 @@
     <div id="loginContainer" class="login-container">
         <div class="login-box">
             <div class="login-logo">📊</div>
-            <h2 class="login-title">Database Dashboard</h2>
-            <p class="login-subtitle">Secure access • Part 1 FIXED</p>
+            <h2 class="login-title">IM DASHBOARD</h2>
             <div id="loginError" class="login-error"></div>
             <input type="text" id="username" class="login-input" placeholder="Username" autocomplete="username">
             <input type="password" id="password" class="login-input" placeholder="Password" autocomplete="current-password" onkeypress="if(event.key === 'Enter') handleLogin()">
             <button class="login-btn" onclick="handleLogin()">🔐 Login</button>
-            <div class="login-footer">Default: admin / admin@2026</div>
         </div>
     </div>
     
@@ -307,13 +305,6 @@
             </div>
         </header>
 
-        <div class="alert alert-info">
-            <span>ℹ️</span>
-            <div>
-                <strong>Part 1 FIXED!</strong> ✅ Instagram icons now showing • ✅ Updated stats cards with correct calculations<br>
-                <em>Test everything, then request Part 2!</em>
-            </div>
-        </div>
 
         <!-- Updated Stats Grid with 5 metrics as requested -->
         <div class="stats-grid">
@@ -797,7 +788,7 @@
             if (username === CONFIG.ADMIN_CREDENTIALS.username && password === CONFIG.ADMIN_CREDENTIALS.password) {
                 isValid = true;
                 userRole = 'admin';
-                displayName = 'Administrator';
+                displayName = 'VIP USER';
                 console.log('✅ Admin login successful!');
             } else {
                 // Check user accounts
@@ -1841,7 +1832,7 @@
                     const badge = document.createElement('span');
                     badge.className = 'user-badge';
                     badge.style.cssText = 'font-size: 0.5em; background: rgba(99, 102, 241, 0.2); color: var(--primary); padding: 0.25rem 0.75rem; border-radius: 6px; margin-left: 1rem; font-weight: 600;';
-                    badge.textContent = 'TEAM MEMBER VIEW';
+                    badge.textContent = '';
                     header.appendChild(badge);
                 }
             }
