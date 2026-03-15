@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IM DASHBOARD</title>
+    <title>Database Dashboard - Part 1 Fixed</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -191,7 +191,42 @@
         @media (min-width: 769px) { .sidebar-toggle-mobile { display: none !important; } }
     .mobile-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
         @media (max-width: 768px) { .mobile-overlay.active { display: block; } }
-        </style>
+        
+        /* Backup System Styles */
+        .backup-section { background: var(--bg-elevated); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; }
+        .backup-controls { display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+        .backup-status { padding: 0.75rem; background: var(--bg-card); border-radius: 8px; margin-top: 1rem; }
+        .backup-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--bg-card); border-radius: 6px; margin-bottom: 0.5rem; }
+        .backup-time { color: var(--text-secondary); font-size: 0.85rem; }
+
+        /* Enhanced Campaign Styles */
+        .campaign-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .metric-box { background: var(--bg-elevated); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--primary); }
+        .metric-label { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem; }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+        .metric-change { font-size: 0.85rem; margin-top: 0.25rem; }
+        .metric-positive { color: var(--success); }
+        .metric-negative { color: var(--danger); }
+        .campaign-health { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .health-excellent { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .health-good { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+        .health-fair { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .health-poor { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .progress-container { margin-top: 0.5rem; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+
+        /* Enhanced Analytics Styles */
+        .analytics-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .insight-card { background: var(--bg-elevated); padding: 1.25rem; border-radius: 12px; border-left: 4px solid var(--primary); }
+        .insight-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .insight-title { font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; }
+        .insight-value { font-size: 1.75rem; font-weight: 800; color: var(--primary); margin-bottom: 0.25rem; }
+        .insight-desc { font-size: 0.85rem; color: var(--text-secondary); }
+        .trend-indicator { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; }
+        .trend-up { color: var(--success); }
+        .trend-down { color: var(--danger); }
+        .export-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+</style>
 </head>
 <body>
     <div class="bg-gradient"></div>
@@ -350,9 +385,56 @@
 
         <!-- Campaigns Tab -->
         <div id="campaigns" class="tab-content">
+            <div class="campaign-metrics">
+                <div class="metric-box">
+                    <div class="metric-label">Total ROI</div>
+                    <div class="metric-value" id="totalROI">0%</div>
+                    <div class="metric-change metric-positive" id="roiChange">+0% vs target</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Avg CPM</div>
+                    <div class="metric-value" id="campaignAvgCPM">₹0</div>
+                    <div class="metric-change" id="cpmTrend">Across all campaigns</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Total Reach</div>
+                    <div class="metric-value" id="totalReach">0</div>
+                    <div class="metric-change" id="reachChange">Impressions delivered</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Active Campaigns</div>
+                    <div class="metric-value" id="activeCampaignsCount">0</div>
+                    <div class="metric-change" id="campaignStatus">Running now</div>
+                </div>
+            </div>
+            
             <div class="card">
-                <div class="card-header"><h2 class="card-title">Campaign Management</h2></div>
-                <div class="table-container"><table><thead><tr><th>Brand</th><th>Product</th><th>Creators</th><th>Budget</th><th>Spent</th><th>Posts</th><th>Status</th></tr></thead><tbody id="campaignsTableBody"></tbody></table></div>
+                <div class="card-header">
+                    <h2 class="card-title">Campaign Performance</h2>
+                    <select id="campaignSortBy" onchange="updateCampaignsTable()" style="padding: 0.5rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);">
+                        <option value="budget">Sort by Budget</option>
+                        <option value="roi">Sort by ROI</option>
+                        <option value="reach">Sort by Reach</option>
+                        <option value="cpm">Sort by CPM</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Budget</th>
+                                <th>Spent</th>
+                                <th>ROI</th>
+                                <th>Reach</th>
+                                <th>CPM</th>
+                                <th>Progress</th>
+                                <th>Health</th>
+                            </tr>
+                        </thead>
+                        <tbody id="campaignsTableBody"></tbody>
+                    </table>
+                </div>
             </div>
             
             <div class="card">
@@ -379,18 +461,100 @@
 
         <!-- Analytics Tab -->
         <div id="analytics" class="tab-content">
+            <div class="analytics-summary">
+                <div class="insight-card">
+                    <div class="insight-icon">📊</div>
+                    <div class="insight-title">Total Views</div>
+                    <div class="insight-value" id="totalViews">0</div>
+                    <div class="insight-desc">
+                        <span class="trend-indicator trend-up" id="viewsTrend">↑ +0%</span> vs last period
+                    </div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-icon">💰</div>
+                    <div class="insight-title">Total Investment</div>
+                    <div class="insight-value" id="totalInvestment">₹0</div>
+                    <div class="insight-desc">
+                        <span class="trend-indicator" id="spendTrend">Across all campaigns</span>
+                    </div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-icon">🎯</div>
+                    <div class="insight-title">Best Performing</div>
+                    <div class="insight-value" id="bestCampaign" style="font-size: 1.25rem;">-</div>
+                    <div class="insight-desc" id="bestCampaignMetric">Highest ROI</div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-icon">📈</div>
+                    <div class="insight-title">Avg Engagement</div>
+                    <div class="insight-value" id="avgEngagementRate">0%</div>
+                    <div class="insight-desc">Estimated from reach</div>
+                </div>
+            </div>
+            
             <div class="charts-grid">
                 <div class="chart-container"><canvas id="performanceChart"></canvas></div>
                 <div class="chart-container"><canvas id="cpmChart"></canvas></div>
             </div>
+            
             <div class="card">
-                <div class="card-header"><h2 class="card-title">Campaign Performance</h2></div>
-                <div class="table-container"><table><thead><tr><th>Campaign</th><th>Views</th><th>Spend</th><th>CPM</th><th>Creators</th></tr></thead><tbody id="analyticsTableBody"></tbody></table></div>
+                <div class="card-header">
+                    <h2 class="card-title">Detailed Analytics</h2>
+                    <button class="btn btn-secondary btn-small" onclick="exportAnalytics()">
+                        <span>📥</span> Export CSV
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Views</th>
+                                <th>Impressions</th>
+                                <th>Spend</th>
+                                <th>CPM</th>
+                                <th>Creators</th>
+                                <th>ROI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analyticsTableBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <!-- Settings Tab -->
         <div id="settings" class="tab-content">
+            <!-- Backup Section -->
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">💾 Auto-Backup System</h2></div>
+                <div class="backup-section">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Automatic Backups</h3>
+                    <div class="backup-status" id="backupStatus">⏸️ Auto-backup disabled</div>
+                    
+                    <div class="backup-controls">
+                        <button class="btn btn-primary" onclick="createBackup()">
+                            <span>💾</span> Create Backup Now
+                        </button>
+                        <button class="btn btn-secondary" onclick="startAutoBackup(24)">
+                            <span>⏰</span> Enable Auto-Backup (24h)
+                        </button>
+                        <button class="btn btn-secondary" onclick="stopAutoBackup()">
+                            <span>⏸️</span> Disable Auto-Backup
+                        </button>
+                        <label class="btn btn-secondary" style="margin: 0;">
+                            <span>📥</span> Restore from Backup
+                            <input type="file" accept=".json" onchange="restoreBackup(event)" style="display: none;">
+                        </label>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem;">
+                        <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Recent Backups</h4>
+                        <div id="backupHistory"></div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="card">
                 <div class="card-header"><h2 class="card-title">⚙️ Data Source Management</h2></div>
                 <div style="background: var(--bg-elevated); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
@@ -413,7 +577,10 @@
                 <div style="margin-top: 1.5rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Apps Script Web App URL</label>
                     <input type="text" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
-                    <button class="btn btn-primary" onclick="saveAppsScriptUrl()" style="margin-top: 1rem;"><span>💾</span> Save URL</button>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="saveAppsScriptUrl()"><span>💾</span> Save URL</button>
+                        <button class="btn btn-secondary" onclick="testAppsScriptConnection()"><span>🔌</span> Test Connection</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -505,8 +672,8 @@
         const CONFIG = {
             // Change these credentials!
             LOGIN_CREDENTIALS: {
-                username: 'Ritik',
-                password: 'Ritik@1234'
+                username: 'admin',
+                password: 'admin@2026'
             },
             SESSION_TIMEOUT: 24 * 60 * 60 * 1000 // 24 hours
         };
@@ -1020,6 +1187,8 @@
             updateCharts();
             updateLockedCreatorsActivity();
             updateDataSourcesList();
+            updateCampaignMetrics();
+            updateAnalyticsSummary();
         }
 
         // Update locked creators with brand logos (FIXED)
@@ -1538,6 +1707,303 @@
         
         // Auto-refresh every 5 minutes
         setInterval(() => { if (DATA_SOURCES.filter(s => s.active).length > 0) loadAllData(); }, 5 * 60 * 1000);
-    </script>
+    
+        // =====================================
+        // FEATURE 6: AUTO-BACKUP SYSTEM
+        // =====================================
+        let autoBackupInterval = null;
+        
+        function initAutoBackup() {
+            const enabled = localStorage.getItem('autoBackupEnabled') === 'true';
+            const intervalHours = parseInt(localStorage.getItem('autoBackupInterval') || '24');
+            
+            if (enabled) {
+                startAutoBackup(intervalHours);
+            }
+        }
+        
+        function startAutoBackup(hours) {
+            if (autoBackupInterval) clearInterval(autoBackupInterval);
+            
+            const ms = hours * 60 * 60 * 1000;
+            autoBackupInterval = setInterval(() => {
+                createBackup(true);
+            }, ms);
+            
+            localStorage.setItem('autoBackupEnabled', 'true');
+            localStorage.setItem('autoBackupInterval', hours.toString());
+            updateBackupStatus();
+        }
+        
+        function stopAutoBackup() {
+            if (autoBackupInterval) {
+                clearInterval(autoBackupInterval);
+                autoBackupInterval = null;
+            }
+            localStorage.setItem('autoBackupEnabled', 'false');
+            updateBackupStatus();
+        }
+        
+        function createBackup(isAuto = false) {
+            const backup = {
+                timestamp: new Date().toISOString(),
+                type: isAuto ? 'auto' : 'manual',
+                data: DATA,
+                dataSources: DATA_SOURCES,
+                version: '1.0'
+            };
+            
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const filename = `dashboard-backup-${new Date().toISOString().split('T')[0]}.json`;
+            
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            // Save backup info
+            const backups = JSON.parse(localStorage.getItem('backupHistory') || '[]');
+            backups.unshift({
+                timestamp: backup.timestamp,
+                type: backup.type,
+                filename: filename
+            });
+            localStorage.setItem('backupHistory', JSON.stringify(backups.slice(0, 10)));
+            
+            updateBackupHistory();
+            
+            if (!isAuto) {
+                alert('✅ Backup created successfully!');
+            }
+        }
+        
+        function restoreBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!confirm('⚠️ This will replace all current data. Continue?')) {
+                event.target.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const backup = JSON.parse(e.target.result);
+                    
+                    if (backup.data) DATA = backup.data;
+                    if (backup.dataSources) {
+                        DATA_SOURCES = backup.dataSources;
+                        localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+                    }
+                    
+                    updateDashboard();
+                    updateDataSourcesList();
+                    alert('✅ Backup restored successfully!');
+                } catch (error) {
+                    alert('❌ Invalid backup file');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+        
+        function updateBackupStatus() {
+            const enabled = localStorage.getItem('autoBackupEnabled') === 'true';
+            const interval = localStorage.getItem('autoBackupInterval') || '24';
+            const statusEl = document.getElementById('backupStatus');
+            
+            if (statusEl) {
+                if (enabled) {
+                    statusEl.innerHTML = `<span style="color: var(--success);">✅ Auto-backup enabled (every ${interval} hours)</span>`;
+                } else {
+                    statusEl.innerHTML = `<span style="color: var(--text-secondary);">⏸️ Auto-backup disabled</span>`;
+                }
+            }
+        }
+        
+        function updateBackupHistory() {
+            const backups = JSON.parse(localStorage.getItem('backupHistory') || '[]');
+            const container = document.getElementById('backupHistory');
+            
+            if (!container) return;
+            
+            if (backups.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-secondary); padding: 1rem; text-align: center;">No backups yet</div>';
+                return;
+            }
+            
+            container.innerHTML = backups.map(b => `
+                <div class="backup-item">
+                    <div>
+                        <strong style="color: var(--text-primary);">${b.filename}</strong>
+                        <div class="backup-time">${new Date(b.timestamp).toLocaleString()} • ${b.type}</div>
+                    </div>
+                    <span class="badge ${b.type === 'auto' ? 'badge-primary' : 'badge-secondary'}">${b.type}</span>
+                </div>
+            `).join('');
+        }
+
+
+        function testAppsScriptConnection() {
+            const url = document.getElementById('appsScriptUrl').value.trim();
+            if (!url) {
+                alert('Please enter the Apps Script URL first');
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳</span> Testing...';
+            
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ test: true })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<span>✅</span> Connected!';
+                setTimeout(() => {
+                    btn.innerHTML = '<span>🔌</span> Test Connection';
+                }, 2000);
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.innerHTML = '<span>❌</span> Failed';
+                setTimeout(() => {
+                    btn.innerHTML = '<span>🔌</span> Test Connection';
+                }, 2000);
+                alert('Connection failed. Please check the URL.');
+            });
+        }
+
+
+        // =====================================
+        // FEATURE 9: ENHANCED CAMPAIGNS
+        // =====================================
+        function calculateCampaignROI(campaign) {
+            if (!campaign.spent || campaign.spent === 0) return 0;
+            const analytics = DATA.analytics.find(a => a.campaign === campaign.product);
+            if (!analytics) return 0;
+            
+            // Simple ROI calculation: (Value - Cost) / Cost * 100
+            // Using views as value proxy
+            const value = analytics.views * 0.1; // Assuming ₹0.1 per view
+            return ((value - campaign.spent) / campaign.spent * 100).toFixed(2);
+        }
+        
+        function getCampaignHealth(campaign) {
+            const progress = campaign.budget > 0 ? (campaign.spent / campaign.budget * 100) : 0;
+            const roi = parseFloat(calculateCampaignROI(campaign));
+            
+            if (roi > 50 && progress < 90) return 'excellent';
+            if (roi > 20 && progress < 100) return 'good';
+            if (roi > 0 || progress < 100) return 'fair';
+            return 'poor';
+        }
+        
+        function updateCampaignMetrics() {
+            const campaigns = DATA.campaigns;
+            const analytics = DATA.analytics;
+            
+            // Total ROI
+            let totalSpent = 0;
+            let totalValue = 0;
+            campaigns.forEach(c => {
+                totalSpent += c.spent || 0;
+                const a = analytics.find(an => an.campaign === c.product);
+                if (a) totalValue += (a.views || 0) * 0.1;
+            });
+            const totalROI = totalSpent > 0 ? ((totalValue - totalSpent) / totalSpent * 100) : 0;
+            document.getElementById('totalROI').textContent = totalROI.toFixed(1) + '%';
+            
+            // Avg CPM
+            const avgCPM = analytics.length > 0 
+                ? analytics.reduce((sum, a) => sum + (a.cpm || 0), 0) / analytics.length 
+                : 0;
+            document.getElementById('campaignAvgCPM').textContent = '₹' + avgCPM.toFixed(2);
+            
+            // Total Reach
+            const totalReach = analytics.reduce((sum, a) => sum + (a.views || 0), 0);
+            document.getElementById('totalReach').textContent = totalReach.toLocaleString();
+            
+            // Active Campaigns
+            const activeCampaigns = campaigns.filter(c => c.status === 'Active').length;
+            document.getElementById('activeCampaignsCount').textContent = activeCampaigns;
+        }
+
+
+        // =====================================
+        // FEATURE 10: ENHANCED ANALYTICS
+        // =====================================
+        function updateAnalyticsSummary() {
+            const analytics = DATA.analytics;
+            
+            // Total Views
+            const totalViews = analytics.reduce((sum, a) => sum + (a.views || 0), 0);
+            document.getElementById('totalViews').textContent = totalViews.toLocaleString();
+            
+            // Total Investment
+            const totalInvestment = analytics.reduce((sum, a) => sum + (a.spend || 0), 0);
+            document.getElementById('totalInvestment').textContent = '₹' + totalInvestment.toLocaleString();
+            
+            // Best Performing Campaign
+            let bestCampaign = null;
+            let bestROI = -Infinity;
+            analytics.forEach(a => {
+                const roi = a.spend > 0 ? ((a.views * 0.1 - a.spend) / a.spend * 100) : 0;
+                if (roi > bestROI) {
+                    bestROI = roi;
+                    bestCampaign = a.campaign;
+                }
+            });
+            document.getElementById('bestCampaign').textContent = bestCampaign || 'N/A';
+            document.getElementById('bestCampaignMetric').textContent = bestROI > -Infinity ? `ROI: ${bestROI.toFixed(1)}%` : 'No data';
+            
+            // Avg Engagement (estimated)
+            const totalReach = analytics.reduce((sum, a) => sum + (a.avgReach || 0), 0);
+            const engagementRate = totalReach > 0 ? (totalViews / totalReach * 100) : 0;
+            document.getElementById('avgEngagementRate').textContent = engagementRate.toFixed(2) + '%';
+        }
+        
+        function exportAnalytics() {
+            const analytics = DATA.analytics;
+            if (analytics.length === 0) {
+                alert('No analytics data to export');
+                return;
+            }
+            
+            // Create CSV
+            const headers = ['Campaign', 'Views', 'Impressions', 'Spend', 'CPM', 'Creators', 'Avg Reach', 'Date'];
+            const rows = analytics.map(a => [
+                a.campaign,
+                a.views || 0,
+                a.impressions || 0,
+                a.spend || 0,
+                a.cpm || 0,
+                a.creators || 0,
+                a.avgReach || 0,
+                a.date || ''
+            ]);
+            
+            const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+            
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `analytics-export-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            alert('✅ Analytics exported successfully!');
+        }
+
+</script>
 </body>
 </html>
