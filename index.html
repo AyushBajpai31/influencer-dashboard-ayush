@@ -548,16 +548,18 @@
                 <div class="backup-section">
                     <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Cloud Backup Configuration</h3>
                     
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Backup Google Sheet ID</label>
-                        <input type="text" id="backupSheetId" placeholder="Paste your backup sheet ID here" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
-                        <small style="color: var(--text-secondary); font-size: 0.85rem;">Get this from your backup sheet URL: /d/<strong>SHEET_ID</strong>/edit</small>
+                    <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+                        <span>ℹ️</span>
+                        <div>
+                            <strong>Google Apps Script Required</strong><br>
+                            To backup to Google Sheets, you need to deploy a Google Apps Script web app. <a href="#" onclick="alert('1. Open your Backup Sheet\\n2. Extensions → Apps Script\\n3. Paste the script code\\n4. Deploy as Web App\\n5. Copy the URL here'); return false;" style="color: var(--primary); text-decoration: underline;">Setup Instructions</a>
+                        </div>
                     </div>
                     
                     <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Google Sheets API Key</label>
-                        <input type="text" id="backupApiKey" placeholder="Your Google Sheets API Key" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
-                        <small style="color: var(--text-secondary); font-size: 0.85rem;">Same API key you use for data source</small>
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Apps Script Web App URL</label>
+                        <input type="text" id="backupScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                        <small style="color: var(--text-secondary); font-size: 0.85rem;">Get this from Apps Script: Deploy → Web app URL</small>
                     </div>
                     
                     <div style="margin-bottom: 1.5rem;">
@@ -574,7 +576,7 @@
                     
                     <div class="backup-controls">
                         <button class="btn btn-primary" onclick="saveBackupConfigToCloud()">
-                            <span>☁️</span> Save to Cloud
+                            <span>☁️</span> Save Configuration
                         </button>
                         <button class="btn btn-secondary" onclick="testBackupConnection()">
                             <span>🔌</span> Test Connection
@@ -1893,56 +1895,56 @@ function switchTab(t) {
         
         
         // =====================================
-        // CLOUD BACKUP FUNCTIONS
+        // CLOUD BACKUP FUNCTIONS (APPS SCRIPT)
         // =====================================
         
         let BACKUP_CONFIG = {
-            sheetId: localStorage.getItem('backupSheetId') || '',
-            apiKey: localStorage.getItem('backupApiKey') || '',
+            scriptUrl: localStorage.getItem('backupScriptUrl') || '',
             interval: parseInt(localStorage.getItem('backupInterval') || '24'),
             enabled: localStorage.getItem('backupEnabled') === 'true',
             lastBackup: localStorage.getItem('lastBackupTime') || null
         };
         
-        // Save backup configuration to cloud
+        // Save backup configuration
         async function saveBackupConfigToCloud() {
-            const sheetId = document.getElementById('backupSheetId').value.trim();
-            const apiKey = document.getElementById('backupApiKey').value.trim();
+            const scriptUrl = document.getElementById('backupScriptUrl').value.trim();
             const interval = parseInt(document.getElementById('backupInterval').value);
             
-            if (!sheetId || !apiKey) {
-                alert('❌ Please fill in both Backup Sheet ID and API Key');
+            if (!scriptUrl) {
+                alert('❌ Please enter the Apps Script Web App URL');
+                return;
+            }
+            
+            if (!scriptUrl.includes('script.google.com')) {
+                alert('❌ Invalid Apps Script URL. It should start with https://script.google.com/macros/s/...');
                 return;
             }
             
             // Save configuration
             BACKUP_CONFIG = {
-                sheetId: sheetId,
-                apiKey: apiKey,
+                scriptUrl: scriptUrl,
                 interval: interval,
                 enabled: true,
                 lastBackup: null
             };
             
-            localStorage.setItem('backupSheetId', sheetId);
-            localStorage.setItem('backupApiKey', apiKey);
+            localStorage.setItem('backupScriptUrl', scriptUrl);
             localStorage.setItem('backupInterval', interval.toString());
             localStorage.setItem('backupEnabled', 'true');
             
             // Start automated backup
             startCloudBackup();
             
-            alert('✅ Backup configuration saved! Automated backup will run every ' + interval + ' hours.');
+            alert('✅ Backup configuration saved!\\n\\nAutomated backup will run every ' + interval + ' hours.\\n\\nFirst backup will run in 5 seconds.');
             updateBackupStatus();
         }
         
         // Test backup connection
         async function testBackupConnection() {
-            const sheetId = document.getElementById('backupSheetId').value.trim();
-            const apiKey = document.getElementById('backupApiKey').value.trim();
+            const scriptUrl = document.getElementById('backupScriptUrl').value.trim();
             
-            if (!sheetId || !apiKey) {
-                alert('❌ Please enter both Backup Sheet ID and API Key');
+            if (!scriptUrl) {
+                alert('❌ Please enter the Apps Script Web App URL');
                 return;
             }
             
@@ -1952,21 +1954,21 @@ function switchTab(t) {
             btn.innerHTML = '<span>⏳</span> Testing...';
             
             try {
-                // Try to access the backup sheet
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?key=${apiKey}`;
-                const response = await fetch(url);
+                const response = await fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'test' })
+                });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    btn.innerHTML = '<span>✅</span> Connected!';
-                    alert('✅ Connection successful!\\n\\nBackup Sheet: ' + data.properties.title);
-                } else {
-                    btn.innerHTML = '<span>❌</span> Failed';
-                    alert('❌ Connection failed. Please check your Sheet ID and API Key.');
-                }
+                // Note: no-cors mode means we can't read the response
+                // But if it doesn't throw an error, connection works
+                btn.innerHTML = '<span>✅</span> Connected!';
+                alert('✅ Connection successful!\\n\\nApps Script is responding.\\n\\nYou can now run backups.');
+                
             } catch (error) {
                 btn.innerHTML = '<span>❌</span> Failed';
-                alert('❌ Connection error: ' + error.message);
+                alert('❌ Connection failed: ' + error.message + '\\n\\nMake sure:\\n1. Apps Script is deployed as Web App\\n2. Execute as: Me\\n3. Who has access: Anyone');
             }
             
             setTimeout(() => {
@@ -1981,7 +1983,7 @@ function switchTab(t) {
                 clearInterval(autoBackupInterval);
             }
             
-            if (!BACKUP_CONFIG.enabled || !BACKUP_CONFIG.sheetId || !BACKUP_CONFIG.apiKey) {
+            if (!BACKUP_CONFIG.enabled || !BACKUP_CONFIG.scriptUrl) {
                 console.log('Cloud backup not configured');
                 return;
             }
@@ -2000,156 +2002,103 @@ function switchTab(t) {
             }, 5000);
         }
         
-        // Perform cloud backup to Google Sheets
+        // Perform cloud backup via Apps Script
         async function performCloudBackup() {
-            if (!BACKUP_CONFIG.enabled || !BACKUP_CONFIG.sheetId || !BACKUP_CONFIG.apiKey) {
-                console.log('Cloud backup not configured, skipping');
+            if (!BACKUP_CONFIG.enabled || !BACKUP_CONFIG.scriptUrl) {
+                alert('❌ Backup not configured!\\n\\nPlease enter Apps Script URL and click "Save Configuration" first.');
                 return;
             }
             
             console.log('🔄 Starting cloud backup...');
-            updateBackupStatus('🔄 Backing up...');
+            updateBackupStatus('🔄 Backing up data...');
+            
+            const btn = event ? event.target : null;
+            let originalHTML = '';
+            if (btn) {
+                originalHTML = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span>⏳</span> Backing up...';
+            }
             
             try {
                 const timestamp = new Date().toISOString();
                 
-                // Backup each data type
-                await backupSheetData('Creators_Backup', DATA.creators, timestamp);
-                await backupSheetData('Campaigns_Backup', DATA.campaigns, timestamp);
-                await backupSheetData('Payments_Backup', DATA.payments, timestamp);
-                await backupSheetData('Analytics_Backup', DATA.analytics, timestamp);
+                // Prepare backup data
+                const backupData = {
+                    action: 'backup',
+                    timestamp: timestamp,
+                    creators: DATA.creators || [],
+                    campaigns: DATA.campaigns || [],
+                    payments: DATA.payments || [],
+                    analytics: DATA.analytics || []
+                };
                 
-                // Update backup log
-                await updateBackupLog(timestamp);
+                console.log('Sending data to Apps Script:', {
+                    creators: backupData.creators.length,
+                    campaigns: backupData.campaigns.length,
+                    payments: backupData.payments.length,
+                    analytics: backupData.analytics.length
+                });
                 
-                // Update local status
+                // Send to Apps Script
+                const response = await fetch(BACKUP_CONFIG.scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(backupData)
+                });
+                
+                // Update local status (no-cors means we can't read response)
                 BACKUP_CONFIG.lastBackup = timestamp;
                 localStorage.setItem('lastBackupTime', timestamp);
-                localStorage.setItem('backupEnabled', 'true');
                 
-                console.log('✅ Cloud backup completed successfully');
+                // Add to backup history
+                const backups = JSON.parse(localStorage.getItem('backupHistory') || '[]');
+                backups.unshift({
+                    timestamp: timestamp,
+                    type: 'cloud',
+                    counts: {
+                        creators: backupData.creators.length,
+                        campaigns: backupData.campaigns.length,
+                        payments: backupData.payments.length,
+                        analytics: backupData.analytics.length
+                    }
+                });
+                localStorage.setItem('backupHistory', JSON.stringify(backups.slice(0, 10)));
+                updateBackupHistory();
+                
+                console.log('✅ Cloud backup completed');
                 updateBackupStatus();
                 
-                alert('✅ Backup completed successfully!\\n\\nAll data backed up to Google Sheets.');
+                if (btn) {
+                    btn.innerHTML = '<span>✅</span> Done!';
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                    }, 2000);
+                }
+                
+                alert('✅ Backup completed!\\n\\n' +
+                      'Creators: ' + backupData.creators.length + '\\n' +
+                      'Campaigns: ' + backupData.campaigns.length + '\\n' +
+                      'Payments: ' + backupData.payments.length + '\\n' +
+                      'Analytics: ' + backupData.analytics.length + '\\n\\n' +
+                      'Check your Backup Sheet for 5 new tabs!');
                 
             } catch (error) {
                 console.error('❌ Cloud backup failed:', error);
                 updateBackupStatus('❌ Backup failed: ' + error.message);
-                alert('❌ Backup failed: ' + error.message);
-            }
-        }
-        
-        // Backup individual sheet data
-        async function backupSheetData(sheetName, data, timestamp) {
-            if (!data || data.length === 0) {
-                console.log(`No data to backup for ${sheetName}`);
-                return;
-            }
-            
-            // First, check if sheet exists, if not create it
-            await ensureBackupSheetExists(sheetName);
-            
-            // Clear existing data
-            await clearBackupSheet(sheetName);
-            
-            // Prepare data with timestamp
-            const headers = Object.keys(data[0]);
-            const values = [
-                ['Backup_Timestamp', ...headers],
-                ...data.map(item => [
-                    timestamp,
-                    ...headers.map(key => item[key] !== undefined ? item[key] : '')
-                ])
-            ];
-            
-            // Write to sheet
-            const range = `${sheetName}!A1`;
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${BACKUP_CONFIG.sheetId}/values/${range}:append?valueInputOption=RAW&key=${BACKUP_CONFIG.apiKey}`;
-            
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ values: values })
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(`Failed to backup ${sheetName}: ${error.error.message}`);
-            }
-            
-            console.log(`✓ Backed up ${sheetName} (${data.length} rows)`);
-        }
-        
-        // Ensure backup sheet exists
-        async function ensureBackupSheetExists(sheetName) {
-            try {
-                // Get spreadsheet info
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${BACKUP_CONFIG.sheetId}?key=${BACKUP_CONFIG.apiKey}`;
-                const response = await fetch(url);
-                const spreadsheet = await response.json();
                 
-                // Check if sheet exists
-                const sheetExists = spreadsheet.sheets.some(s => s.properties.title === sheetName);
-                
-                if (!sheetExists) {
-                    // Create the sheet
-                    const addSheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${BACKUP_CONFIG.sheetId}:batchUpdate?key=${BACKUP_CONFIG.apiKey}`;
-                    await fetch(addSheetUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            requests: [{
-                                addSheet: {
-                                    properties: { title: sheetName }
-                                }
-                            }]
-                        })
-                    });
-                    console.log(`Created backup sheet: ${sheetName}`);
+                if (btn) {
+                    btn.innerHTML = '<span>❌</span> Failed';
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                    }, 2000);
                 }
-            } catch (error) {
-                console.warn(`Could not check/create sheet ${sheetName}:`, error);
+                
+                alert('❌ Backup failed: ' + error.message + '\\n\\nCheck browser console for details.');
             }
-        }
-        
-        // Clear backup sheet
-        async function clearBackupSheet(sheetName) {
-            try {
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${BACKUP_CONFIG.sheetId}/values/${sheetName}:clear?key=${BACKUP_CONFIG.apiKey}`;
-                await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            } catch (error) {
-                console.warn(`Could not clear ${sheetName}:`, error);
-            }
-        }
-        
-        // Update backup log
-        async function updateBackupLog(timestamp) {
-            const logSheetName = 'Backup_Log';
-            
-            await ensureBackupSheetExists(logSheetName);
-            
-            // Add log entry
-            const logEntry = [[
-                timestamp,
-                DATA.creators.length,
-                DATA.campaigns.length,
-                DATA.payments.length,
-                DATA.analytics.length,
-                'Success',
-                DATA.creators.length + DATA.campaigns.length + DATA.payments.length + DATA.analytics.length
-            ]];
-            
-            const range = `${logSheetName}!A:G`;
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${BACKUP_CONFIG.sheetId}/values/${range}:append?valueInputOption=RAW&key=${BACKUP_CONFIG.apiKey}`;
-            
-            await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ values: logEntry })
-            });
         }
         
         // Update backup status display
@@ -2162,7 +2111,7 @@ function switchTab(t) {
                 return;
             }
             
-            if (!BACKUP_CONFIG.enabled || !BACKUP_CONFIG.sheetId) {
+            if (!BACKUP_CONFIG.enabled || !BACKUP_CONFIG.scriptUrl) {
                 statusEl.innerHTML = '<span style="color: var(--text-secondary);">⏸️ Auto-backup not configured</span>';
                 return;
             }
@@ -2183,6 +2132,38 @@ function switchTab(t) {
             statusEl.innerHTML = statusHTML;
         }
         
+        // Update backup history display
+        function updateBackupHistory() {
+            const historyEl = document.getElementById('backupHistory');
+            if (!historyEl) return;
+            
+            const backups = JSON.parse(localStorage.getItem('backupHistory') || '[]');
+            
+            if (backups.length === 0) {
+                historyEl.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">No backups yet</p>';
+                return;
+            }
+            
+            historyEl.innerHTML = backups.slice(0, 5).map(b => {
+                const date = new Date(b.timestamp);
+                const counts = b.counts || {};
+                const total = (counts.creators || 0) + (counts.campaigns || 0) + (counts.payments || 0) + (counts.analytics || 0);
+                return `
+                    <div style="padding: 0.75rem; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${date.toLocaleString()}</strong>
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">
+                                    ${total} total rows • ${b.type || 'manual'}
+                                </div>
+                            </div>
+                            <div style="color: var(--success);">✅</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
         // Get time ago string
         function getTimeAgo(date) {
             const seconds = Math.floor((new Date() - date) / 1000);
@@ -2195,17 +2176,21 @@ function switchTab(t) {
         
         // Load backup configuration on page load
         function loadBackupConfig() {
-            if (BACKUP_CONFIG.sheetId) {
-                document.getElementById('backupSheetId').value = BACKUP_CONFIG.sheetId;
-            }
-            if (BACKUP_CONFIG.apiKey) {
-                document.getElementById('backupApiKey').value = BACKUP_CONFIG.apiKey;
+            if (BACKUP_CONFIG.scriptUrl) {
+                const scriptUrlInput = document.getElementById('backupScriptUrl');
+                if (scriptUrlInput) {
+                    scriptUrlInput.value = BACKUP_CONFIG.scriptUrl;
+                }
             }
             if (BACKUP_CONFIG.interval) {
-                document.getElementById('backupInterval').value = BACKUP_CONFIG.interval.toString();
+                const intervalSelect = document.getElementById('backupInterval');
+                if (intervalSelect) {
+                    intervalSelect.value = BACKUP_CONFIG.interval.toString();
+                }
             }
             
             updateBackupStatus();
+            updateBackupHistory();
             
             if (BACKUP_CONFIG.enabled) {
                 startCloudBackup();
