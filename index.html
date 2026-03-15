@@ -1826,7 +1826,13 @@
                 exportBtns.forEach(btn => {
                     if (!btn.classList.contains('platform-link')) btn.style.display = 'none';
                 });
-                
+                                const header = document.querySelector('h1');
+                if (header && !header.querySelector('.user-badge')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'user-badge';
+                    badge.style.cssText = 'font-size: 0.5em; background: rgba(99, 102, 241, 0.2); color: var(--primary); padding: 0.25rem 0.75rem; border-radius: 6px; margin-left: 1rem; font-weight: 600;';
+                    badge.textContent = 'TEAM MEMBER VIEW';
+                    header.appendChild(badge);
                 }
             }
         }
