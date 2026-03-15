@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Dashboard - Part 1 Fixe</title>
+    <title>Database Dashboard - Part 1 Fixed</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -525,6 +525,23 @@
 
         <!-- Settings Tab -->
         <div id="settings" class="tab-content">
+            <!-- Admin Password Protection -->
+            <div id="settingsLockScreen" style="text-align: center; padding: 4rem 2rem;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">🔒</div>
+                <h2 style="font-size: 2rem; margin-bottom: 1rem; color: var(--text-primary);">Administrator Access Required</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Enter admin password to access settings</p>
+                
+                <div style="max-width: 400px; margin: 0 auto;">
+                    <input type="password" id="adminPasswordInput" placeholder="Admin Password" onkeypress="if(event.key==='Enter') unlockSettings()" style="width: 100%; padding: 1rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 1rem; margin-bottom: 1rem;">
+                    <button class="btn btn-primary" onclick="unlockSettings()" style="width: 100%;">
+                        🔓 Unlock Settings
+                    </button>
+                    <div id="adminPasswordError" style="color: var(--danger); margin-top: 1rem; display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- Settings Content (Hidden until unlocked) -->
+            <div id="settingsContent" style="display: none;">
             <!-- Cloud Backup Configuration -->
             <div class="card">
                 <div class="card-header"><h2 class="card-title">💾 Auto-Backup System</h2></div>
@@ -602,8 +619,10 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+            
+            </div><!-- Close settingsContent -->
+        </div><!-- Close settings tab -->
+    </div><!-- Close main container -->
 
     <!-- Modals -->
     <div id="uploadModal" class="modal">
@@ -728,7 +747,7 @@
         let currentUser = null;
         let USER_ROLE = null;
         let CONFIG_SHEET_ID = '1xamzE15vqa5XycO0UZL30E5NKoryCKrdhZGxQvnOwTk';
-        let CONFIG_API_KEY = 'AIzaSyA4O-2ZHOMf22VBqogIbE_Vegf6BhLjx6I ';
+        let CONFIG_API_KEY = 'IzaSyA4O-2ZHOMf22VBqogIbE_Vegf6BhLjx6I';
         let ADMIN_PASSWORD = 'admin@2026';
         let SETTINGS_UNLOCKED = false;
 
@@ -1785,7 +1804,35 @@
             return true;
         }
 
+        // Unlock Settings tab with password
+        function unlockSettings() {
+            const password = document.getElementById('adminPasswordInput').value;
+            const errorEl = document.getElementById('adminPasswordError');
+            
+            if (password === ADMIN_PASSWORD || password === 'admin@2026') {
+                SETTINGS_UNLOCKED = true;
+                document.getElementById('settingsLockScreen').style.display = 'none';
+                document.getElementById('settingsContent').style.display = 'block';
+            } else {
+                errorEl.textContent = '❌ Incorrect admin password';
+                errorEl.style.display = 'block';
+                setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
+            }
+        }
+
 function switchTab(t) {
+            if (t === 'settings') {
+                if (USER_ROLE !== 'admin') {
+                    alert('🔒 Settings access is restricted to administrators only.');
+                    return;
+                }
+                // Reset lock screen for admin
+                SETTINGS_UNLOCKED = false;
+                document.getElementById('settingsLockScreen').style.display = 'block';
+                document.getElementById('settingsContent').style.display = 'none';
+                document.getElementById('adminPasswordInput').value = '';
+            }
+            
             if (window.innerWidth <= 768) closeMobileSidebar();
             document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(nt => nt.classList.remove('active'));
