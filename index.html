@@ -740,7 +740,7 @@
         // Global state
         let DATA_SOURCES = JSON.parse(localStorage.getItem('dataSources')) || [];
         let DATA = { creators: [], campaigns: [], payments: [], analytics: [], campaignReports: [] };
-        let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || '';
+        let APPS_SCRIPT_URL = '';  // Will be loaded from Config Sheet
         let CURRENT_MONTH_FILTER = 'all';
         let CURRENT_REPORT_MONTH = 'all';
         let charts = {};
@@ -748,7 +748,7 @@
         let currentWhatsAppContact = { phone: '', name: '', product: '' };
         let currentUser = null;
         let USER_ROLE = null;
-        let CONFIG_SHEET_ID = '1BsQeGapZkc5eEbMe7gyLfcIX3KioPP21yT9zVA4PGEg';
+        let CONFIG_SHEET_ID = '1xamzE15vqa5XycO0UZL30E5NKoryCKrdhZGxQvnOwTk';
         let CONFIG_API_KEY = 'AIzaSyA4O-2ZHOMf22VBqogIbE_Vegf6BhLjx6I';
         let ADMIN_PASSWORD = 'admin@2026';
         let SETTINGS_UNLOCKED = false;
@@ -999,15 +999,25 @@
             `).join('');
         }
 
-        function saveAppsScriptUrl() {
+        async function saveAppsScriptUrl() {
             const url = document.getElementById('appsScriptUrl').value.trim();
             if (!url) {
-                alert('Please enter the Apps Script URL');
+                alert('❌ Please enter the Apps Script URL');
                 return;
             }
+            
+            if (!url.includes('script.google.com')) {
+                alert('❌ Invalid Apps Script URL. It should start with https://script.google.com/macros/s/...');
+                return;
+            }
+            
+            // Save to memory
             APPS_SCRIPT_URL = url;
+            
+            // Also save to localStorage as backup
             localStorage.setItem('appsScriptUrl', url);
-            alert('✅ Apps Script URL saved!');
+            
+            alert('✅ Apps Script URL saved!\\n\\nThis URL will be used by ALL users for uploading campaign reports.\\n\\n⚠️ Important: Also add this URL to Config Sheet → SystemConfig tab → appsScriptUrl for permanent storage.');
         }
 
         // ========================================
@@ -1850,6 +1860,14 @@
                 
                 // Load backup configuration when Settings opens
                 loadBackupConfig();
+                
+                // Load Apps Script URL if available
+                if (APPS_SCRIPT_URL) {
+                    const appsScriptInput = document.getElementById('appsScriptUrl');
+                    if (appsScriptInput) {
+                        appsScriptInput.value = APPS_SCRIPT_URL;
+                    }
+                }
             } else {
                 errorEl.textContent = '❌ Incorrect admin password';
                 errorEl.style.display = 'block';
@@ -2759,15 +2777,38 @@ function switchTab(t) {
             }
             
             try {
-                // Need API key first - try from SystemConfig
-                const configUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG_SHEET_ID}/values/SystemConfig!A:B`;
-                
                 // Try with hardcoded API key if available
                 let apiKey = CONFIG_API_KEY || localStorage.getItem('configApiKey');
                 
                 if (!apiKey) {
                     console.log('No API key available for Config Sheet');
                     return;
+                }
+                
+                // First, load SystemConfig to get Apps Script URL
+                const configUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG_SHEET_ID}/values/SystemConfig!A:B?key=${apiKey}`;
+                const configResponse = await fetch(configUrl);
+                
+                if (configResponse.ok) {
+                    const configData = await configResponse.json();
+                    const configRows = configData.values || [];
+                    
+                    // Parse SystemConfig
+                    configRows.forEach(row => {
+                        const key = (row[0] || '').trim();
+                        const value = (row[1] || '').trim();
+                        
+                        if (key === 'appsScriptUrl' && value) {
+                            APPS_SCRIPT_URL = value;
+                            localStorage.setItem('appsScriptUrl', value);
+                            console.log('✅ Loaded Apps Script URL from Config Sheet');
+                        }
+                        
+                        if (key === 'adminPassword' && value) {
+                            ADMIN_PASSWORD = value;
+                            CONFIG.ADMIN_CREDENTIALS.password = value;
+                        }
+                    });
                 }
                 
                 // Load users from Config Sheet
