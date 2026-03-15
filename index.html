@@ -525,27 +525,46 @@
 
         <!-- Settings Tab -->
         <div id="settings" class="tab-content">
-            <!-- Backup Section -->
+            <!-- Cloud Backup Configuration -->
             <div class="card">
                 <div class="card-header"><h2 class="card-title">💾 Auto-Backup System</h2></div>
                 <div class="backup-section">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Automatic Backups</h3>
-                    <div class="backup-status" id="backupStatus">⏸️ Auto-backup disabled</div>
+                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Cloud Backup Configuration</h3>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Backup Google Sheet ID</label>
+                        <input type="text" id="backupSheetId" placeholder="Paste your backup sheet ID here" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                        <small style="color: var(--text-secondary); font-size: 0.85rem;">Get this from your backup sheet URL: /d/<strong>SHEET_ID</strong>/edit</small>
+                    </div>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Google Sheets API Key</label>
+                        <input type="text" id="backupApiKey" placeholder="Your Google Sheets API Key" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                        <small style="color: var(--text-secondary); font-size: 0.85rem;">Same API key you use for data source</small>
+                    </div>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Backup Interval</label>
+                        <select id="backupInterval" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                            <option value="24">Every 24 hours (Daily)</option>
+                            <option value="12">Every 12 hours (Twice daily)</option>
+                            <option value="6">Every 6 hours</option>
+                            <option value="1">Every 1 hour (Testing)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="backup-status" id="backupStatus">⏸️ Auto-backup not configured</div>
                     
                     <div class="backup-controls">
-                        <button class="btn btn-primary" onclick="createBackup()">
-                            <span>💾</span> Create Backup Now
+                        <button class="btn btn-primary" onclick="saveBackupConfigToCloud()">
+                            <span>☁️</span> Save to Cloud
                         </button>
-                        <button class="btn btn-secondary" onclick="startAutoBackup(24)">
-                            <span>⏰</span> Enable Auto-Backup (24h)
+                        <button class="btn btn-secondary" onclick="testBackupConnection()">
+                            <span>🔌</span> Test Connection
                         </button>
-                        <button class="btn btn-secondary" onclick="stopAutoBackup()">
-                            <span>⏸️</span> Disable Auto-Backup
+                        <button class="btn btn-secondary" onclick="createBackup()">
+                            <span>💾</span> Backup Now
                         </button>
-                        <label class="btn btn-secondary" style="margin: 0;">
-                            <span>📥</span> Restore from Backup
-                            <input type="file" accept=".json" onchange="restoreBackup(event)" style="display: none;">
-                        </label>
                     </div>
                     
                     <div style="margin-top: 1.5rem;">
@@ -675,8 +694,8 @@
                 password: 'admin@2026'
             },
             USER_ACCOUNTS: [
-                { username: 'Ayush', password: 'Ayush@1234', name: 'Team Member 1', role: 'user' },
-                { username: 'Ritik', password: 'Ritik@2001', name: 'Team Member 2', role: 'user' },
+                { username: 'user1', password: 'user123', name: 'Team Member 1', role: 'user' },
+                { username: 'user2', password: 'user456', name: 'Team Member 2', role: 'user' },
                 { username: 'user3', password: 'user789', name: 'Team Member 3', role: 'user' },
                 { username: 'user4', password: 'user101', name: 'Team Member 4', role: 'user' },
                 { username: 'user5', password: 'user202', name: 'Team Member 5', role: 'user' }
@@ -708,8 +727,8 @@
         let currentWhatsAppContact = { phone: '', name: '', product: '' };
         let currentUser = null;
         let USER_ROLE = null;
-        let CONFIG_SHEET_ID = '1xamzE15vqa5XycO0UZL30E5NKoryCKrdhZGxQvnOwTk';
-        let CONFIG_API_KEY = 'AIzaSyA4O-2ZHOMf22VBqogIbE_Vegf6BhLjx6I';
+        let CONFIG_SHEET_ID = 'YOUR_CONFIG_SHEET_ID_HERE';
+        let CONFIG_API_KEY = '';
         let ADMIN_PASSWORD = 'admin@2026';
         let SETTINGS_UNLOCKED = false;
 
