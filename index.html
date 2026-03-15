@@ -670,11 +670,17 @@
         // CONFIGURATION
         // ========================================
         const CONFIG = {
-            // Change these credentials!
-            LOGIN_CREDENTIALS: {
-                username: 'Ritik',
-                password: 'Ritik@1234'
+            ADMIN_CREDENTIALS: {
+                username: 'admin',
+                password: 'admin@2026'
             },
+            USER_ACCOUNTS: [
+                { username: 'user1', password: 'user123', name: 'Team Member 1', role: 'user' },
+                { username: 'user2', password: 'user456', name: 'Team Member 2', role: 'user' },
+                { username: 'user3', password: 'user789', name: 'Team Member 3', role: 'user' },
+                { username: 'user4', password: 'user101', name: 'Team Member 4', role: 'user' },
+                { username: 'user5', password: 'user202', name: 'Team Member 5', role: 'user' }
+            ],
             SESSION_TIMEOUT: 24 * 60 * 60 * 1000 // 24 hours
         };
 
@@ -701,6 +707,11 @@
         let uploadedFileData = null;
         let currentWhatsAppContact = { phone: '', name: '', product: '' };
         let currentUser = null;
+        let USER_ROLE = null;
+        let CONFIG_SHEET_ID = 'YOUR_CONFIG_SHEET_ID_HERE';
+        let CONFIG_API_KEY = '';
+        let ADMIN_PASSWORD = 'admin@2026';
+        let SETTINGS_UNLOCKED = false;
 
         // Continue in next chunk...
 
