@@ -762,6 +762,14 @@
                 currentUser = username;
                 USER_ROLE = userRole;
                 
+                // Load user-specific data source if user has assigned sheet
+                if (userRole === 'user') {
+                    const userAccount = CONFIG.USER_ACCOUNTS.find(u => u.username === username);
+                    if (userAccount && userAccount.sheetId && userAccount.apiKey) {
+                        loadUserDataSource(userAccount);
+                    }
+                }
+                
                 document.getElementById('loginContainer').style.display = 'none';
                 document.getElementById('mainContainer').style.display = 'block';
                 document.getElementById('currentUsername').textContent = displayName;
@@ -2072,6 +2080,293 @@ function switchTab(t) {
             URL.revokeObjectURL(url);
             
             alert('✅ Analytics exported successfully!');
+        }
+
+
+        // =====================================
+        // USER SHEET ASSIGNMENT FUNCTIONS
+        // =====================================
+        
+        // Toggle user sheet fields based on role
+        function toggleUserSheetFields() {
+            const role = document.getElementById('modalUserRole').value;
+            const sheetFields = document.getElementById('userSheetFields');
+            
+            if (role === 'user') {
+                sheetFields.style.display = 'block';
+            } else {
+                sheetFields.style.display = 'none';
+            }
+        }
+        
+        // Load user list from CONFIG
+        function loadUserManagementList() {
+            const container = document.getElementById('userManagementList');
+            
+            // Get users from CONFIG
+            const allUsers = [
+                { userId: '0', username: 'admin', password: CONFIG.ADMIN_CREDENTIALS.password, displayName: 'Administrator', role: 'admin', isActive: true, sheetId: '', apiKey: '' },
+                ...CONFIG.USER_ACCOUNTS.map((u, i) => ({
+                    userId: (i + 1).toString(),
+                    username: u.username,
+                    password: u.password,
+                    displayName: u.name,
+                    role: u.role,
+                    isActive: true,
+                    sheetId: u.sheetId || '',
+                    apiKey: u.apiKey || ''
+                }))
+            ];
+            
+            container.innerHTML = allUsers.map(user => `
+                <div class="user-item" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 0.5rem;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--text-primary);">${user.displayName}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; margin-top: 0.25rem;">
+                            @${user.username} • ${user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                            ${user.sheetId ? '<br>📊 Has dedicated sheet' : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary btn-small" onclick='editUserDetails(${JSON.stringify(user).replace(/'/g, "&apos;")})'>
+                            ✏️ Edit
+                        </button>
+                        ${user.userId !== '0' ? `<button class="btn btn-danger btn-small" onclick="confirmDeleteUser('${user.username}', '${user.userId}')">🗑️</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Open modal to add new user
+        function openAddUserModal() {
+            document.getElementById('userModalTitle').textContent = 'Add New User';
+            document.getElementById('modalUserDisplayName').value = '';
+            document.getElementById('modalUserUsername').value = '';
+            document.getElementById('modalUserPassword').value = '';
+            document.getElementById('modalUserRole').value = 'user';
+            document.getElementById('modalUserSheetId').value = '';
+            document.getElementById('modalUserApiKey').value = '';
+            document.getElementById('modalUserDisplayName').dataset.userId = '';
+            toggleUserSheetFields();
+            document.getElementById('userManagementModal').classList.add('active');
+        }
+        
+        // Edit existing user
+        function editUserDetails(user) {
+            document.getElementById('userModalTitle').textContent = 'Edit User: ' + user.displayName;
+            document.getElementById('modalUserDisplayName').value = user.displayName;
+            document.getElementById('modalUserUsername').value = user.username;
+            document.getElementById('modalUserPassword').value = user.password;
+            document.getElementById('modalUserRole').value = user.role;
+            document.getElementById('modalUserSheetId').value = user.sheetId || '';
+            document.getElementById('modalUserApiKey').value = user.apiKey || '';
+            document.getElementById('modalUserDisplayName').dataset.userId = user.userId;
+            toggleUserSheetFields();
+            document.getElementById('userManagementModal').classList.add('active');
+        }
+        
+        // Close user modal
+        function closeUserModal() {
+            document.getElementById('userManagementModal').classList.remove('active');
+        }
+        
+        // Save user changes
+        function saveUserChanges() {
+            const userId = document.getElementById('modalUserDisplayName').dataset.userId;
+            const displayName = document.getElementById('modalUserDisplayName').value.trim();
+            const username = document.getElementById('modalUserUsername').value.trim();
+            const password = document.getElementById('modalUserPassword').value;
+            const role = document.getElementById('modalUserRole').value;
+            const sheetId = document.getElementById('modalUserSheetId').value.trim();
+            const apiKey = document.getElementById('modalUserApiKey').value.trim();
+            
+            if (!displayName || !username || !password) {
+                alert('❌ Please fill in Display Name, Username, and Password');
+                return;
+            }
+            
+            if (role === 'user' && !sheetId) {
+                alert('❌ Please assign a Google Sheet ID for this user');
+                return;
+            }
+            
+            // Update or add user in CONFIG
+            if (userId === '' || userId === undefined) {
+                // New user
+                const newUser = {
+                    username: username,
+                    password: password,
+                    name: displayName,
+                    role: role,
+                    sheetId: sheetId,
+                    apiKey: apiKey
+                };
+                CONFIG.USER_ACCOUNTS.push(newUser);
+            } else if (userId === '0') {
+                // Editing admin
+                CONFIG.ADMIN_CREDENTIALS.password = password;
+                alert('✅ Admin password updated!\n\nNew password: ' + password);
+            } else {
+                // Edit existing user
+                const userIndex = CONFIG.USER_ACCOUNTS.findIndex((u, i) => (i + 1).toString() === userId);
+                if (userIndex !== -1) {
+                    CONFIG.USER_ACCOUNTS[userIndex] = {
+                        username: username,
+                        password: password,
+                        name: displayName,
+                        role: role,
+                        sheetId: sheetId,
+                        apiKey: apiKey
+                    };
+                }
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('USER_ACCOUNTS', JSON.stringify(CONFIG.USER_ACCOUNTS));
+            localStorage.setItem('ADMIN_PASSWORD', CONFIG.ADMIN_CREDENTIALS.password);
+            
+            // Save to localStorage (works on this browser only)
+            localStorage.setItem('USER_ACCOUNTS', JSON.stringify(CONFIG.USER_ACCOUNTS));
+            localStorage.setItem('ADMIN_PASSWORD', CONFIG.ADMIN_CREDENTIALS.password);
+            
+            // Show instructions for Config Sheet sync
+            const isNewUser = (userId === '' || userId === undefined);
+            const message = isNewUser ? 
+                `✅ User saved successfully!\n\nUsername: ${username}\nPassword: ${password}\n${sheetId ? 'Sheet ID: ' + sheetId.substring(0, 20) + '...' : ''}\n\n📋 TO MAKE THIS WORK ON ALL DEVICES:\n\n1. Open Config Sheet → Users tab\n2. Add new row:\n   UserId: ${CONFIG.USER_ACCOUNTS.length + 1}\n   Username: ${username}\n   Password: ${password}\n   DisplayName: ${displayName}\n   Role: ${role}\n   IsActive: TRUE\n   SheetId: ${sheetId || '(leave empty)'}\n   ApiKey: ${apiKey || '(leave empty)'}\n\n3. Save sheet\n4. User can now login from ANY device!` :
+                `✅ User updated successfully!\n\nUsername: ${username}\nPassword: ${password}\n${sheetId ? 'Sheet ID: ' + sheetId.substring(0, 20) + '...' : ''}\n\n📋 TO SYNC ACROSS DEVICES:\n\n1. Open Config Sheet → Users tab\n2. Find row with UserId: ${userId}\n3. Update the values\n4. Save sheet`;
+            
+            alert(message);
+            
+            closeUserModal();
+            loadUserManagementList();
+        }
+        
+        // Confirm delete user
+        function confirmDeleteUser(username, userId) {
+            if (!confirm(`Delete user @${username}?\n\nThis will remove their access immediately.`)) return;
+            
+            // Remove from CONFIG
+            const userIndex = CONFIG.USER_ACCOUNTS.findIndex((u, i) => (i + 1).toString() === userId);
+            if (userIndex !== -1) {
+                CONFIG.USER_ACCOUNTS.splice(userIndex, 1);
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('USER_ACCOUNTS', JSON.stringify(CONFIG.USER_ACCOUNTS));
+            
+            alert(`✅ User @${username} deleted!`);
+            loadUserManagementList();
+        }
+        
+        // Load user-specific data sources on login
+        function loadUserDataSource(user) {
+            if (user.role === 'admin') {
+                // Admin can see all data sources
+                return;
+            }
+            
+            // User gets only their assigned sheet
+            if (user.sheetId && user.apiKey) {
+                const userDataSource = {
+                    id: 'user_' + user.username,
+                    name: user.displayName + "'s Data",
+                    apiKey: user.apiKey,
+                    sheetId: user.sheetId,
+                    active: true
+                };
+                
+                DATA_SOURCES = [userDataSource];
+                localStorage.setItem('dataSources', JSON.stringify(DATA_SOURCES));
+                
+                console.log('✅ Loaded user-specific data source:', userDataSource);
+            }
+        }
+
+
+        // Load users from Config Sheet OR localStorage on startup
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Try to load from Config Sheet first (works across devices)
+            if (CONFIG_SHEET_ID && CONFIG_SHEET_ID !== 'YOUR_CONFIG_SHEET_ID_HERE') {
+                await loadUsersFromConfigSheet();
+            } else {
+                // Fallback to localStorage (this browser only)
+                const savedUsers = localStorage.getItem('USER_ACCOUNTS');
+                const savedAdminPass = localStorage.getItem('ADMIN_PASSWORD');
+                
+                if (savedUsers) {
+                    try {
+                        CONFIG.USER_ACCOUNTS = JSON.parse(savedUsers);
+                        console.log('✅ Loaded', CONFIG.USER_ACCOUNTS.length, 'users from localStorage');
+                    } catch (e) {
+                        console.error('Failed to load users:', e);
+                    }
+                }
+                
+                if (savedAdminPass) {
+                    CONFIG.ADMIN_CREDENTIALS.password = savedAdminPass;
+                    ADMIN_PASSWORD = savedAdminPass;
+                }
+            }
+        });
+        
+        // Load users from Config Sheet (works across all devices)
+        async function loadUsersFromConfigSheet() {
+            if (!CONFIG_SHEET_ID || CONFIG_SHEET_ID === 'YOUR_CONFIG_SHEET_ID_HERE') {
+                console.log('Config Sheet not configured');
+                return;
+            }
+            
+            try {
+                // Need API key first - try from SystemConfig
+                const configUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG_SHEET_ID}/values/SystemConfig!A:B`;
+                
+                // Try with hardcoded API key if available
+                let apiKey = CONFIG_API_KEY || localStorage.getItem('configApiKey');
+                
+                if (!apiKey) {
+                    console.log('No API key available for Config Sheet');
+                    return;
+                }
+                
+                // Load users from Config Sheet
+                const usersUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG_SHEET_ID}/values/Users!A:J?key=${apiKey}`;
+                const response = await fetch(usersUrl);
+                
+                if (!response.ok) {
+                    console.log('Could not load users from Config Sheet');
+                    return;
+                }
+                
+                const data = await response.json();
+                const rows = data.values || [];
+                
+                if (rows.length <= 1) {
+                    console.log('No users found in Config Sheet');
+                    return;
+                }
+                
+                // Parse users (skip header)
+                const cloudUsers = rows.slice(1).map(row => ({
+                    username: row[1],
+                    password: row[2],
+                    name: row[3],
+                    role: row[4],
+                    isActive: row[5] === 'TRUE',
+                    sheetId: row[6] || '',
+                    apiKey: row[7] || ''
+                })).filter(u => u.isActive && u.role === 'user');
+                
+                // Update CONFIG
+                CONFIG.USER_ACCOUNTS = cloudUsers;
+                
+                // Also save to localStorage as cache
+                localStorage.setItem('USER_ACCOUNTS', JSON.stringify(cloudUsers));
+                
+                console.log('✅ Loaded', cloudUsers.length, 'users from Config Sheet');
+                
+            } catch (error) {
+                console.error('Failed to load users from Config Sheet:', error);
+            }
         }
 
 </script>
