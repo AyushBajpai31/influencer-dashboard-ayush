@@ -1321,7 +1321,11 @@
 
         // Update locked creators with brand logos (FIXED)
         function updateLockedCreatorsActivity() {
-            const lc = DATA.creators.filter(c => c.status === 'Locked');
+            // Get locked creators and sort by newest first (reverse order)
+            const lc = DATA.creators
+                .filter(c => c.status === 'Locked')
+                .reverse(); // Show latest locked creators first
+            
             const container = document.getElementById('lockedCreatorsActivity');
             const countEl = document.getElementById('lockedCreatorsCount');
             
@@ -1404,7 +1408,10 @@
         function updateCreatorsTable() {
             const tbody = document.getElementById('creatorsTableBody');
             
-            tbody.innerHTML = DATA.creators.map(c => {
+            // Sort creators to show newest first (reverse order from sheet)
+            const sortedCreators = [...DATA.creators].reverse();
+            
+            tbody.innerHTML = sortedCreators.map(c => {
                 const productStatuses = parseProductStatus(c.productStatus);
                 const products = c.product ? c.product.split(',').map(p => p.trim()) : [];
                 
