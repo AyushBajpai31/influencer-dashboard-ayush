@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Dashboard - Part 1 Fixed</title>
+    <title>IM DASHBOARD</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -279,7 +279,7 @@
         </div>
         <div class="user-info">
             <div class="user-name" id="currentUsername">Admin User</div>
-            <div class="user-role">Administrator</div>
+            <div class="user-role" id="currentUserRole">Administrator</div>
             <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
         </div>
     </aside>
@@ -747,6 +747,19 @@
             }
             
             currentUser = session.user;
+            USER_ROLE = session.role;
+            
+            // Update display name
+            if (session.displayName) {
+                document.getElementById('currentUsername').textContent = session.displayName;
+            }
+            
+            // Update role
+            const roleEl = document.getElementById('currentUserRole');
+            if (roleEl) {
+                roleEl.textContent = session.role === 'admin' ? 'Administrator' : 'Team Member';
+            }
+            
             return true;
         }
 
@@ -813,7 +826,57 @@
         });
 
         // Sidebar functions
-        function toggleSidebar() {
+        
+        // Apply role-based access restrictions
+        function applyRoleRestrictions() {
+            if (USER_ROLE !== 'admin') {
+                // Hide Settings tab for regular users
+                const settingsTab = Array.from(document.querySelectorAll('.nav-tab')).find(
+                    tab => tab.textContent.includes('Settings')
+                );
+                if (settingsTab) {
+                    settingsTab.style.display = 'none';
+                }
+                
+                // Disable export/download buttons
+                const exportBtns = document.querySelectorAll('[onclick*="export"], [onclick*="Export"], [onclick*="download"], [onclick*="Download"]');
+                exportBtns.forEach(btn => {
+                    if (!btn.classList.contains('platform-link')) { // Don't disable platform links
+                        btn.style.display = 'none';
+                    }
+                });
+                
+                // Add "View Only" indicator for users
+                const header = document.querySelector('h1');
+                if (header && !header.querySelector('.user-badge')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'user-badge';
+                    badge.style.cssText = 'font-size: 0.5em; background: rgba(99, 102, 241, 0.2); color: var(--primary); padding: 0.25rem 0.75rem; border-radius: 6px; margin-left: 1rem; font-weight: 600;';
+                    badge.textContent = 'TEAM MEMBER VIEW';
+                    header.appendChild(badge);
+                }
+                
+                console.log('🔒 User role restrictions applied');
+            } else {
+                console.log('👑 Admin access granted - full permissions');
+            }
+        }
+        
+        // Check if current user is admin
+        function isAdmin() {
+            return USER_ROLE === 'admin';
+        }
+        
+        // Protect admin-only functions
+        function requireAdmin(action) {
+            if (!isAdmin()) {
+                alert('🔒 Admin Access Required\n\nThis action requires administrator privileges.\nPlease contact your administrator.');
+                return false;
+            }
+            return true;
+        }
+
+function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const container = document.getElementById('mainContainer');
             sidebar.classList.toggle('collapsed');
@@ -846,6 +909,8 @@
         }
 
         function saveConfig() {
+            if (!requireAdmin('modify data sources')) return;
+            
             const name = document.getElementById('sheetNameInput').value.trim() || 'Sheet ' + (DATA_SOURCES.length + 1);
             const apiKey = document.getElementById('apiKeyInput').value.trim();
             const sheetId = document.getElementById('sheetIdInput').value.trim();
@@ -911,6 +976,8 @@
         }
 
         function saveAppsScriptUrl() {
+            if (!requireAdmin('modify Apps Script URL')) return;
+            
             const url = document.getElementById('appsScriptUrl').value.trim();
             if (!url) {
                 alert('Please enter the Apps Script URL');
@@ -2043,6 +2110,8 @@
 
         // Save backup configuration
         function saveBackupConfig() {
+            if (!requireAdmin('save backup configuration')) return;
+            
             const sheetId = document.getElementById('backupSheetId').value.trim();
             const apiKey = document.getElementById('backupApiKey').value.trim();
             const interval = parseInt(document.getElementById('backupInterval').value);
