@@ -786,23 +786,6 @@
                 errorEl.style.display = 'block';
                 setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
             }
-        }         localStorage.setItem('dashboardSession', JSON.stringify(session));
-                currentUser = username;
-                
-                document.getElementById('loginContainer').style.display = 'none';
-                document.getElementById('mainContainer').style.display = 'block';
-                document.getElementById('currentUsername').textContent = username;
-                
-                if (DATA_SOURCES.length === 0) {
-                    document.getElementById('configModal').classList.add('active');
-                } else {
-                    loadAllData();
-                }
-            } else {
-                errorEl.textContent = '❌ Invalid username or password';
-                errorEl.style.display = 'block';
-                setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
-            }
         }
 
         function handleLogout() {
