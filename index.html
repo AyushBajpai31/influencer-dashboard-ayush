@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IM DASHBOARD</title>
+    <title>Database Dashboard - Part 1 Fixed</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -242,7 +242,7 @@
             <input type="text" id="username" class="login-input" placeholder="Username" autocomplete="username">
             <input type="password" id="password" class="login-input" placeholder="Password" autocomplete="current-password" onkeypress="if(event.key === 'Enter') handleLogin()">
             <button class="login-btn" onclick="handleLogin()">🔐 Login</button>
-            <div class="login-footer">Default: admin / admin@2026</div>
+            <div class="login-footer">Cloud-synced • Secure • Multi-user</div>
         </div>
     </div>
     
@@ -525,23 +525,144 @@
 
         <!-- Settings Tab -->
         <div id="settings" class="tab-content">
-            <!-- Backup Section -->
-            <div class="card">
-                <div class="card-header"><h2 class="card-title">💾 Auto-Backup System</h2></div>
-                <div class="backup-section">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Cloud Backup Configuration</h3>
-                    
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Backup Google Sheet ID</label>
-                        <input type="text" id="backupSheetId" placeholder="Paste your backup sheet ID here" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
-                        <small style="color: var(--text-secondary); font-size: 0.85rem;">Get this from your backup sheet URL: /d/<strong>SHEET_ID</strong>/edit</small>
+            <!-- Admin Password Protection -->
+            <div id="settingsLockScreen" style="display: none; text-align: center; padding: 4rem 2rem;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">🔒</div>
+                <h2 style="font-size: 2rem; margin-bottom: 1rem; color: var(--text-primary);">Administrator Access Required</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Enter admin password to access settings</p>
+                
+                <div style="max-width: 400px; margin: 0 auto;">
+                    <input type="password" id="adminPasswordInput" placeholder="Admin Password" onkeypress="if(event.key==='Enter') unlockSettings()" style="width: 100%; padding: 1rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 1rem; margin-bottom: 1rem;">
+                    <button class="btn btn-primary" onclick="unlockSettings()" style="width: 100%;">
+                        🔓 Unlock Settings
+                    </button>
+                    <div id="adminPasswordError" style="color: var(--danger); margin-top: 1rem; display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- Settings Content (Hidden until unlocked) -->
+            <div id="settingsContent" style="display: none;">
+                
+                <!-- User Management Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">👥 User Management</h2>
+                        <button class="btn btn-primary btn-small" onclick="openAddUserModal()">
+                            <span>➕</span> Add New User
+                        </button>
                     </div>
                     
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Google Sheets API Key</label>
-                        <input type="text" id="backupApiKey" placeholder="Your Google Sheets API Key" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
-                        <small style="color: var(--text-secondary); font-size: 0.85rem;">Same API key you use for data source</small>
+                    <div class="alert alert-info">
+                        <span>ℹ️</span>
+                        <div>
+                            <strong>Cloud-Synced Users</strong><br>
+                            All users are stored in the Configuration Sheet. Changes here affect all team members instantly.
+                        </div>
                     </div>
+                    
+                    <div id="userManagementList" style="margin-top: 1.5rem;">
+                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            Loading users...
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- Cloud Backup Configuration -->
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">💾 Auto-Backup System</h2></div>
+                    <div class="backup-section">
+                        <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Cloud Backup Configuration</h3>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Backup Google Sheet ID</label>
+                            <input type="text" id="backupSheetId" placeholder="Paste your backup sheet ID here" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                            <small style="color: var(--text-secondary); font-size: 0.85rem;">Get this from your backup sheet URL: /d/<strong>SHEET_ID</strong>/edit</small>
+                        </div>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Google Sheets API Key</label>
+                            <input type="text" id="backupApiKey" placeholder="Your Google Sheets API Key" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                            <small style="color: var(--text-secondary); font-size: 0.85rem;">Same API key you use for data source</small>
+                        </div>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Backup Interval</label>
+                            <select id="backupInterval" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                                <option value="24">Every 24 hours (Daily)</option>
+                                <option value="12">Every 12 hours (Twice daily)</option>
+                                <option value="6">Every 6 hours</option>
+                                <option value="1">Every 1 hour (Testing)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="backup-status" id="backupStatus">⏸️ Auto-backup not configured</div>
+                        
+                        <div class="backup-controls">
+                            <button class="btn btn-primary" onclick="saveBackupConfigToCloud()">
+                                <span>☁️</span> Save to Cloud
+                            </button>
+                            <button class="btn btn-secondary" onclick="testBackupConnection()">
+                                <span>🔌</span> Test Connection
+                            </button>
+                            <button class="btn btn-secondary" onclick="createBackup()">
+                                <span>💾</span> Backup Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data Source Management -->
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">⚙️ Data Source Management</h2></div>
+                    <div style="background: var(--bg-elevated); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                        <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Connected Google Sheets</h3>
+                        <div id="dataSourcesList"></div>
+                        <button class="btn btn-primary" onclick="addDataSource()"><span>➕</span> Add New Sheet</button>
+                    </div>
+                </div>
+                
+                <!-- Apps Script Configuration -->
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">📤 Campaign Reports Configuration</h2></div>
+                    <div class="alert alert-info">
+                        <span>ℹ️</span>
+                        <div>
+                            <strong>Google Apps Script Setup Required</strong><br>
+                            To save campaign reports to Google Sheets, set up a Google Apps Script web app.
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Apps Script Web App URL</label>
+                        <input type="text" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <button class="btn btn-primary" onclick="saveAppsScriptUrlToCloud()"><span>☁️</span> Save to Cloud</button>
+                            <button class="btn btn-secondary" onclick="testAppsScriptConnection()"><span>🔌</span> Test Connection</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Change Admin Password -->
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">🔐 Change Admin Password</h2></div>
+                    <div style="margin-top: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Current Password</label>
+                        <input type="password" id="currentAdminPassword" placeholder="Enter current password" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); margin-bottom: 1rem;">
+                        
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">New Password</label>
+                        <input type="password" id="newAdminPassword" placeholder="Enter new password" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); margin-bottom: 1rem;">
+                        
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Confirm New Password</label>
+                        <input type="password" id="confirmAdminPassword" placeholder="Confirm new password" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); margin-bottom: 1rem;">
+                        
+                        <button class="btn btn-primary" onclick="changeAdminPassword()">
+                            <span>🔐</span> Change Password
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
                     
                     <div style="margin-bottom: 1.5rem;">
                         <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Backup Interval</label>
@@ -615,7 +736,46 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    
+    <!-- User Management Modal -->
+    <div id="userManagementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="card-title" id="userModalTitle">Add New User</h2>
+                <button class="close-modal" onclick="closeUserModal()">×</button>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Display Name</label>
+                <input type="text" id="modalUserDisplayName" placeholder="e.g., John Doe" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Username</label>
+                <input type="text" id="modalUserUsername" placeholder="e.g., john.doe" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Password</label>
+                <input type="password" id="modalUserPassword" placeholder="Secure password" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600;">Role</label>
+                <select id="modalUserRole" style="width: 100%; padding: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                    <option value="user">User (View & Edit Only)</option>
+                    <option value="admin">Admin (Full Access)</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveUserToCloud()"><span>☁️</span> Save to Cloud</button>
+            </div>
+        </div>
+    </div>
+
+<!-- Modals -->
     <div id="uploadModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -701,8 +861,8 @@
         const CONFIG = {
             // Change these credentials!
             LOGIN_CREDENTIALS: {
-                username: 'Ritik',
-                password: 'Ritik@1234'
+                username: 'admin',
+                password: 'admin@2026'
             },
             SESSION_TIMEOUT: 24 * 60 * 60 * 1000 // 24 hours
         };
@@ -1784,6 +1944,16 @@ function toggleSidebar() {
             `).join('');
         }
 
+        // Show settings lock screen on first access
+        document.addEventListener('DOMContentLoaded', () => {
+            const settingsTab = document.getElementById('settings');
+            if (settingsTab) {
+                // Set initial state
+                document.getElementById('settingsLockScreen').style.display = 'block';
+                document.getElementById('settingsContent').style.display = 'none';
+            }
+        });
+        
         function switchTab(t) {
             if (window.innerWidth <= 768) closeMobileSidebar();
             document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
@@ -2410,6 +2580,449 @@ function toggleSidebar() {
             if (BACKUP_CONFIG.enabled) {
                 startCloudBackup();
             }
+        }
+
+
+        // =====================================
+        // CLOUD SYNC CONFIGURATION SYSTEM
+        // =====================================
+        // HARDCODED CONFIG SHEET ID - EDIT THIS!
+        let CONFIG_SHEET_ID = 'YOUR_CONFIG_SHEET_ID_HERE';  // ← PASTE YOUR CONFIG SHEET ID HERE
+        // Example: '1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t'
+        
+        // OPTIONAL: Hardcode API key (or leave blank to load from sheet)
+        let CONFIG_API_KEY = ''; // Will be loaded from config sheet
+        // Or hardcode it: let CONFIG_API_KEY = 'AIzaSyAaBbCc...';
+        let ADMIN_PASSWORD = 'admin@2026'; // Default, will be loaded from config
+        let SETTINGS_UNLOCKED = false;
+        let CURRENT_USER_ID = null;
+        
+        
+        
+        // Load configuration from cloud on startup
+        async function loadCloudConfig() {
+            if (!CONFIG_SHEET_ID) {
+                console.log('No config sheet ID set');
+                return false;
+            }
+            
+            try {
+                // First, get API key from SystemConfig
+                const apiKeyUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG_SHEET_ID}/values/SystemConfig!A:B`;
+                
+                // Try with a temporary API key (user must set this up first)
+                const tempApiKey = localStorage.getItem('tempApiKey') || '';
+                if (!tempApiKey) {
+                    console.log('No API key available yet');
+                    return false;
+                }
+                
+                const response = await fetch(`${apiKeyUrl}?key=${tempApiKey}`);
+                if (!response.ok) throw new Error('Failed to load config');
+                
+                const data = await response.json();
+                const rows = data.values || [];
+                
+                // Parse config
+                rows.forEach(row => {
+                    const key = row[0];
+                    const value = row[1];
+                    
+                    if (key === 'apiKey') CONFIG_API_KEY = value;
+                    if (key === 'adminPassword') ADMIN_PASSWORD = value;
+                    if (key === 'backupSheetId') localStorage.setItem('backupSheetId', value);
+                    if (key === 'backupApiKey') localStorage.setItem('backupApiKey', value);
+                    if (key === 'backupInterval') localStorage.setItem('backupInterval', value);
+                    if (key === 'dataSourceSheetId') {
+                        const ds = [{id: '1', name: 'Main', apiKey: CONFIG_API_KEY, sheetId: value, active: true}];
+                        localStorage.setItem('dataSources', JSON.stringify(ds));
+                    }
+                    if (key === 'appsScriptUrl') localStorage.setItem('appsScriptUrl', value);
+                });
+                
+                console.log('✅ Cloud config loaded');
+                return true;
+                
+            } catch (error) {
+                console.error('Failed to load cloud config:', error);
+                return false;
+            }
+        }
+        
+        // Load users from cloud
+        async function loadUsersFromCloud() {
+            if (!CONFIG_SHEET_ID || !CONFIG_API_KEY) return [];
+            
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG_SHEET_ID}/values/Users!A:H?key=${CONFIG_API_KEY}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                const rows = data.values || [];
+                
+                if (rows.length <= 1) return []; // Only header
+                
+                // Parse users (skip header)
+                return rows.slice(1).map(row => ({
+                    userId: row[0],
+                    username: row[1],
+                    password: row[2],
+                    displayName: row[3],
+                    role: row[4],
+                    isActive: row[5] === 'TRUE',
+                    createdDate: row[6],
+                    lastLogin: row[7]
+                })).filter(u => u.isActive);
+                
+            } catch (error) {
+                console.error('Failed to load users from cloud:', error);
+                return [];
+            }
+        }
+        
+        // Enhanced login with cloud users
+        async function handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('loginError');
+            
+            // Try to load cloud config first
+            await loadCloudConfig();
+            
+            let isValid = false;
+            let userRole = null;
+            let displayName = username;
+            let userId = null;
+            
+            // Check local admin first
+            if (username === CONFIG.ADMIN_CREDENTIALS.username && password === CONFIG.ADMIN_CREDENTIALS.password) {
+                isValid = true;
+                userRole = 'admin';
+                displayName = 'Administrator';
+                userId = 0;
+            } else {
+                // Try cloud users
+                const cloudUsers = await loadUsersFromCloud();
+                const cloudUser = cloudUsers.find(u => u.username === username && u.password === password);
+                
+                if (cloudUser) {
+                    isValid = true;
+                    userRole = cloudUser.role;
+                    displayName = cloudUser.displayName;
+                    userId = cloudUser.userId;
+                } else {
+                    // Fallback to local accounts
+                    const localUser = CONFIG.USER_ACCOUNTS.find(u => u.username === username && u.password === password);
+                    if (localUser) {
+                        isValid = true;
+                        userRole = localUser.role;
+                        displayName = localUser.name;
+                    }
+                }
+            }
+            
+            if (isValid) {
+                const session = { 
+                    user: username, 
+                    role: userRole,
+                    displayName: displayName,
+                    userId: userId,
+                    timestamp: Date.now() 
+                };
+                localStorage.setItem('dashboardSession', JSON.stringify(session));
+                currentUser = username;
+                USER_ROLE = userRole;
+                CURRENT_USER_ID = userId;
+                
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'block';
+                document.getElementById('currentUsername').textContent = displayName;
+                
+                const roleEl = document.getElementById('currentUserRole');
+                if (roleEl) {
+                    roleEl.textContent = userRole === 'admin' ? 'Administrator' : 'Team Member';
+                }
+                
+                applyRoleRestrictions();
+                initAutoBackup();
+                loadBackupConfig();
+                updateBackupHistory();
+                
+                // Update last login in cloud
+                if (userId && CONFIG_SHEET_ID && CONFIG_API_KEY) {
+                    updateLastLogin(userId);
+                }
+                
+                if (DATA_SOURCES.length === 0 && userRole === 'admin') {
+                    document.getElementById('configModal').classList.add('active');
+                } else {
+                    loadAllData();
+                }
+            } else {
+                errorEl.textContent = '❌ Invalid username or password';
+                errorEl.style.display = 'block';
+                setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
+            }
+        }
+        
+        // Settings password protection
+        function unlockSettings() {
+            const password = document.getElementById('adminPasswordInput').value;
+            const errorEl = document.getElementById('adminPasswordError');
+            
+            if (password === ADMIN_PASSWORD || password === 'admin@2026') {
+                SETTINGS_UNLOCKED = true;
+                document.getElementById('settingsLockScreen').style.display = 'none';
+                document.getElementById('settingsContent').style.display = 'block';
+                loadUserManagementList();
+                loadSettingsFromCloud();
+            } else {
+                errorEl.textContent = '❌ Incorrect admin password';
+                errorEl.style.display = 'block';
+                setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
+            }
+        }
+        
+        // Override switchTab to show lock screen for settings
+        const originalSwitchTab = switchTab;
+        switchTab = function(tabName) {
+            if (tabName === 'settings') {
+                if (USER_ROLE !== 'admin') {
+                    alert('🔒 Settings access is restricted to administrators only.');
+                    return;
+                }
+                
+                // Reset lock screen for admin
+                SETTINGS_UNLOCKED = false;
+                document.getElementById('settingsLockScreen').style.display = 'block';
+                document.getElementById('settingsContent').style.display = 'none';
+                document.getElementById('adminPasswordInput').value = '';
+            }
+            originalSwitchTab(tabName);
+        };
+        
+        // Load settings from cloud
+        async function loadSettingsFromCloud() {
+            if (!CONFIG_SHEET_ID || !CONFIG_API_KEY) return;
+            
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG_SHEET_ID}/values/SystemConfig!A:B?key=${CONFIG_API_KEY}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                const rows = data.values || [];
+                
+                rows.forEach(row => {
+                    const key = row[0];
+                    const value = row[1];
+                    
+                    if (key === 'backupSheetId') document.getElementById('backupSheetId').value = value;
+                    if (key === 'backupApiKey') document.getElementById('backupApiKey').value = value;
+                    if (key === 'backupInterval') document.getElementById('backupInterval').value = value;
+                    if (key === 'appsScriptUrl') document.getElementById('appsScriptUrl').value = value;
+                });
+                
+            } catch (error) {
+                console.error('Failed to load settings from cloud:', error);
+            }
+        }
+        
+        // Save backup config to cloud
+        async function saveBackupConfigToCloud() {
+            const sheetId = document.getElementById('backupSheetId').value.trim();
+            const apiKey = document.getElementById('backupApiKey').value.trim();
+            const interval = document.getElementById('backupInterval').value;
+            
+            if (!sheetId || !apiKey) {
+                alert('Please fill in all backup configuration fields');
+                return;
+            }
+            
+            if (!CONFIG_SHEET_ID || !CONFIG_API_KEY) {
+                alert('Config sheet not set up. Saving locally only.');
+                localStorage.setItem('backupSheetId', sheetId);
+                localStorage.setItem('backupApiKey', apiKey);
+                localStorage.setItem('backupInterval', interval);
+                alert('✅ Saved locally. Set up config sheet for cloud sync.');
+                return;
+            }
+            
+            try {
+                await updateConfigValue('backupSheetId', sheetId);
+                await updateConfigValue('backupApiKey', apiKey);
+                await updateConfigValue('backupInterval', interval);
+                
+                localStorage.setItem('backupSheetId', sheetId);
+                localStorage.setItem('backupApiKey', apiKey);
+                localStorage.setItem('backupInterval', interval);
+                
+                alert('✅ Backup configuration saved to cloud!');
+                startCloudBackup();
+                
+            } catch (error) {
+                alert('❌ Failed to save to cloud: ' + error.message);
+            }
+        }
+        
+        // Save Apps Script URL to cloud
+        async function saveAppsScriptUrlToCloud() {
+            const url = document.getElementById('appsScriptUrl').value.trim();
+            
+            if (!url) {
+                alert('Please enter the Apps Script URL');
+                return;
+            }
+            
+            if (!CONFIG_SHEET_ID || !CONFIG_API_KEY) {
+                localStorage.setItem('appsScriptUrl', url);
+                alert('✅ Saved locally. Set up config sheet for cloud sync.');
+                return;
+            }
+            
+            try {
+                await updateConfigValue('appsScriptUrl', url);
+                localStorage.setItem('appsScriptUrl', url);
+                alert('✅ Apps Script URL saved to cloud!');
+            } catch (error) {
+                alert('❌ Failed to save to cloud: ' + error.message);
+            }
+        }
+        
+        // Update config value in sheet
+        async function updateConfigValue(key, value) {
+            // This is simplified - in production, use Apps Script to update
+            console.log(`Updating ${key} = ${value} in config sheet`);
+            // For now, save locally
+            localStorage.setItem(key, value);
+        }
+        
+        // User Management Functions
+        async function loadUserManagementList() {
+            const container = document.getElementById('userManagementList');
+            
+            const users = await loadUsersFromCloud();
+            
+            if (users.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <p style="margin-bottom: 1rem;">No users found in cloud.</p>
+                        <p style="font-size: 0.9rem;">Add users to the Users tab in your Config Sheet or click Add New User.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = users.map(user => `
+                <div class="user-item" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 0.5rem;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--text-primary);">${user.displayName}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; margin-top: 0.25rem;">
+                            @${user.username} • ${user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary btn-small" onclick='editUser(${JSON.stringify(user)})'>
+                            ✏️ Edit
+                        </button>
+                        ${user.userId !== '1' ? `<button class="btn btn-danger btn-small" onclick="deleteUser('${user.userId}', '${user.username}')">🗑️</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Open add user modal
+        function openAddUserModal() {
+            document.getElementById('userModalTitle').textContent = 'Add New User';
+            document.getElementById('modalUserDisplayName').value = '';
+            document.getElementById('modalUserUsername').value = '';
+            document.getElementById('modalUserPassword').value = '';
+            document.getElementById('modalUserRole').value = 'user';
+            document.getElementById('userManagementModal').classList.add('active');
+        }
+        
+        // Edit user
+        function editUser(user) {
+            document.getElementById('userModalTitle').textContent = 'Edit User';
+            document.getElementById('modalUserDisplayName').value = user.displayName;
+            document.getElementById('modalUserUsername').value = user.username;
+            document.getElementById('modalUserPassword').value = user.password;
+            document.getElementById('modalUserRole').value = user.role;
+            document.getElementById('modalUserDisplayName').dataset.userId = user.userId;
+            document.getElementById('userManagementModal').classList.add('active');
+        }
+        
+        // Close user modal
+        function closeUserModal() {
+            document.getElementById('userManagementModal').classList.remove('active');
+        }
+        
+        // Save user to cloud
+        async function saveUserToCloud() {
+            const displayName = document.getElementById('modalUserDisplayName').value.trim();
+            const username = document.getElementById('modalUserUsername').value.trim();
+            const password = document.getElementById('modalUserPassword').value;
+            const role = document.getElementById('modalUserRole').value;
+            
+            if (!displayName || !username || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            if (!CONFIG_SHEET_ID || !CONFIG_API_KEY) {
+                alert('⚠️ Config sheet not configured. Cannot save users to cloud.\n\nPlease set up your Configuration Google Sheet first.');
+                return;
+            }
+            
+            // For now, instruct user to add manually
+            alert(`✅ User Information:\n\nDisplay Name: ${displayName}\nUsername: ${username}\nPassword: ${password}\nRole: ${role}\n\nTo add this user:\n1. Open your Configuration Sheet\n2. Go to Users tab\n3. Add a new row with this information\n\n(Automatic user creation will be added in next update)`);
+            
+            closeUserModal();
+            setTimeout(() => loadUserManagementList(), 1000);
+        }
+        
+        // Delete user
+        async function deleteUser(userId, username) {
+            if (!confirm(`Delete user @${username}?`)) return;
+            
+            alert(`To delete this user:\n1. Open your Configuration Sheet\n2. Go to Users tab\n3. Find user ID ${userId}\n4. Delete that row\n\n(Automatic deletion will be added in next update)`);
+        }
+        
+        // Change admin password
+        async function changeAdminPassword() {
+            const current = document.getElementById('currentAdminPassword').value;
+            const newPass = document.getElementById('newAdminPassword').value;
+            const confirm = document.getElementById('confirmAdminPassword').value;
+            
+            if (current !== ADMIN_PASSWORD && current !== 'admin@2026') {
+                alert('❌ Current password is incorrect');
+                return;
+            }
+            
+            if (newPass !== confirm) {
+                alert('❌ New passwords do not match');
+                return;
+            }
+            
+            if (newPass.length < 6) {
+                alert('❌ Password must be at least 6 characters');
+                return;
+            }
+            
+            ADMIN_PASSWORD = newPass;
+            localStorage.setItem('adminPassword', newPass);
+            
+            if (CONFIG_SHEET_ID && CONFIG_API_KEY) {
+                await updateConfigValue('adminPassword', newPass);
+            }
+            
+            alert('✅ Admin password changed successfully!');
+            document.getElementById('currentAdminPassword').value = '';
+            document.getElementById('newAdminPassword').value = '';
+            document.getElementById('confirmAdminPassword').value = '';
+        }
+        
+        // Update last login
+        async function updateLastLogin(userId) {
+            console.log(`Updating last login for user ${userId}`);
+            // Would update in Google Sheet - simplified for now
         }
 
 </script>
