@@ -1065,7 +1065,7 @@
                                 ${products.map(product => `
                                     <div class="product-status-item">
                                         <span class="product-status-name">🎯 ${product}</span>
-                                        ${getProductStatusBadge(productStatuses[product] || 'Briefed')}
+                                        ${getProductStatusBadge(productStatuses[product] || null)}
                                     </div>
                                 `).join('')}
                                 <div style="margin-top: 0.5rem;">
@@ -1121,7 +1121,7 @@
                                     ${products.map(p => `
                                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                                             <span style="font-size: 0.85rem;">${p}</span>
-                                            ${getProductStatusBadge(productStatuses[p] || 'Briefed')}
+                                            ${getProductStatusBadge(productStatuses[p] || null)}
                                         </div>
                                     `).join('')}
                                 </div>
@@ -1471,7 +1471,7 @@
                                     ${products.map(p => `
                                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                                             <span style="font-size: 0.85rem;">${p}</span>
-                                            ${getProductStatusBadge(productStatuses[p] || 'Briefed')}
+                                            ${getProductStatusBadge(productStatuses[p] || null)}
                                         </div>
                                     `).join('')}
                                 </div>
